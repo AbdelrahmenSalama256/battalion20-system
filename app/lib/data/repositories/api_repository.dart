@@ -152,4 +152,11 @@ class ApiRepository {
   Future<void> deleteAnnouncement(String id) async {
     await _api.delete('/announcements/$id');
   }
+
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    await _api.patch('/auth/change-password', data: {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
 }

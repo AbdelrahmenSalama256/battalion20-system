@@ -347,10 +347,10 @@ rs.get('/stats', auth, async (req, res) => {
     const c = counts.rows[0];
     const d = distribution.rows[0];
     res.json({
-      totalSoldiers: c.total_soldiers, totalResults: c.total_results,
-      avgScore: c.avg_score, passRate: c.pass_rate,
-      byWeapon: byWeapon.rows,
-      distribution: { excellent: d.excellent, veryGood: d.very_good, good: d.good, acceptable: d.acceptable, fail: d.fail },
+      totalSoldiers: Number(c.total_soldiers), totalResults: Number(c.total_results),
+      avgScore: Number(c.avg_score), passRate: Number(c.pass_rate),
+      byWeapon: byWeapon.rows.map(r => ({ ...r, count: Number(r.count), avg: Number(r.avg), pass_rate: Number(r.pass_rate) })),
+      distribution: { excellent: Number(d.excellent), veryGood: Number(d.very_good), good: Number(d.good), acceptable: Number(d.acceptable), fail: Number(d.fail) },
       recentResults: recent.rows,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

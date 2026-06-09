@@ -17,11 +17,14 @@ class DashboardStats {
     required this.recentResults,
   });
 
+  static int _toInt(dynamic v) => v is int ? v : (v is String ? int.tryParse(v) ?? 0 : 0);
+  static double _toDouble(dynamic v) => v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? 0 : 0));
+
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
-    totalSoldiers: json['totalSoldiers'] ?? json['total_soldiers'] ?? 0,
-    totalResults: json['totalResults'] ?? json['total_results'] ?? 0,
-    avgScore: ((json['avgScore'] ?? json['avg_score'] ?? 0) as num).toDouble(),
-    passRate: ((json['passRate'] ?? json['pass_rate'] ?? 0) as num).toDouble(),
+    totalSoldiers: _toInt(json['totalSoldiers'] ?? json['total_soldiers']),
+    totalResults: _toInt(json['totalResults'] ?? json['total_results']),
+    avgScore: _toDouble(json['avgScore'] ?? json['avg_score']),
+    passRate: _toDouble(json['passRate'] ?? json['pass_rate']),
     byWeapon: ((json['byWeapon'] ?? json['by_weapon']) as List? ?? [])
         .map((e) => WeaponStat.fromJson(e)).toList(),
     distribution: ScoreDistribution.fromJson(json['distribution'] ?? {}),

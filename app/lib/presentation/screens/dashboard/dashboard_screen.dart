@@ -9,6 +9,7 @@ import '../../cubits/exams/exams_cubit.dart';
 import '../../cubits/results/results_cubit.dart';
 import '../../cubits/fitness/fitness_cubit.dart';
 import '../../cubits/announcements/announcements_cubit.dart';
+import '../../cubits/settings/settings_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
 import '../../../data/models/dashboard_stats_model.dart';
@@ -19,6 +20,7 @@ import '../exams/exams_screen.dart';
 import '../results/results_screen.dart';
 import '../fitness/fitness_screen.dart';
 import '../announcements/announcements_screen.dart';
+import '../settings/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -37,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _TabItem('النتائج', Icons.grading_outlined, Icons.grading),
     _TabItem('اللياقة', Icons.fitness_center_outlined, Icons.fitness_center),
     _TabItem('الإعلانات', Icons.campaign_outlined, Icons.campaign),
+    _TabItem('الإعدادات', Icons.settings_outlined, Icons.settings),
   ];
 
   @override
@@ -55,6 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       BlocProvider(create: (_) => ResultsCubit(api)..loadResults(), child: const ResultsScreen()),
       BlocProvider(create: (_) => FitnessCubit(api)..loadExercises(), child: const FitnessScreen()),
       BlocProvider(create: (_) => AnnouncementsCubit(api)..loadAnnouncements(), child: const AnnouncementsScreen()),
+      const SettingsScreen(),
     ];
 
     return Scaffold(

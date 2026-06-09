@@ -6,7 +6,7 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: const Color(AC.bg),
-      fontFamily: AC.fontFamily,
+
       useMaterial3: true,
       colorScheme: const ColorScheme.dark(
         primary: Color(AC.gold),
