@@ -27,14 +27,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-app.get('/api/health', async (req, res) => {
-  try {
-    const db = require('./config/db');
-    await db.query('SELECT 1');
-    res.json({ ok: true, db: true, time: new Date().toISOString() });
-  } catch (e) {
-    res.json({ ok: true, db: false, error: e.message, time: new Date().toISOString() });
-  }
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString() });
 });
 
 app.use('/api/auth', authRoutes);
@@ -52,7 +46,7 @@ app.use('/api/ai', aiRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: err.message || 'حدث خطأ غير متوقع' });
+  res.status(500).json({ error: 'حدث خطأ غير متوقع' });
 });
 
 if (require.main === module) {

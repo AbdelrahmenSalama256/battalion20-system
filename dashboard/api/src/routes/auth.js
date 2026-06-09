@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const authMidd = require('../middleware/auth');
-const auth = authMidd.auth;
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
@@ -34,12 +33,11 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, name: user.name, username: user.username, role: user.role }
     });
   } catch (e) {
-    console.error('Login error:', e.message, e.stack);
-    res.status(500).json({ error: 'DB: ' + e.message });
+    res.status(500).json({ error: 'حدث خطأ في الخادم: ' + e.message });
   }
 });
 
-router.get('/me', auth, async (req, res) => {
+router.get('/me', authMidd.auth, async (req, res) => {
   try {
     const { rows } = await db.query(
       'SELECT id, name, username, role, is_active, created_at FROM users WHERE id=$1',
@@ -52,7 +50,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-router.patch('/change-password', auth, async (req, res) => {
+router.patch('/change-password', authMidd.auth, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     const { rows } = await db.query('SELECT password_hash FROM users WHERE id=$1', [req.user.id]);

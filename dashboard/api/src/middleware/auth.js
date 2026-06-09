@@ -22,4 +22,5 @@ function commanderOnly(req, res, next) {
   next();
 }
 
-module.exports = { auth, commanderOnly };
+module.exports.auth = auth;
+module.exports.commanderOnly = commanderOnly;
