@@ -278,7 +278,7 @@ ex.get('/', auth, async (req, res) => {
   try {
     const { type, weaponId } = req.query;
     const { rows } = await db.query(`SELECT e.*, w.name weapon_name, w.icon weapon_icon, sp.name specialty_name, COUNT(DISTINCT ei.id)::int item_count, COUNT(DISTINCT r.id)::int result_count, ROUND(AVG(r.total_score),1) avg_score FROM exams e LEFT JOIN weapons w ON w.id=e.weapon_id LEFT JOIN specialties sp ON sp.id=e.specialty_id LEFT JOIN exam_items ei ON ei.exam_id=e.id LEFT JOIN results r ON r.exam_id=e.id WHERE ($1::text IS NULL OR e.type=$1::text) AND ($2::uuid IS NULL OR e.weapon_id=$2::uuid) GROUP BY e.id,w.name,w.icon,sp.name ORDER BY e.created_at DESC`, [type || null, weaponId || null]);
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, avg_score: r.avg_score != null ? Number(r.avg_score) : null })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 ex.get('/:id', auth, async (req, res) => {
@@ -351,7 +351,7 @@ rs.get('/stats', auth, async (req, res) => {
       avgScore: Number(c.avg_score), passRate: Number(c.pass_rate),
       byWeapon: byWeapon.rows.map(r => ({ ...r, count: Number(r.count), avg: Number(r.avg), pass_rate: Number(r.pass_rate) })),
       distribution: { excellent: Number(d.excellent), veryGood: Number(d.very_good), good: Number(d.good), acceptable: Number(d.acceptable), fail: Number(d.fail) },
-      recentResults: recent.rows,
+      recentResults: recent.rows.map(r => ({ ...r, total_score: Number(r.total_score) })),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

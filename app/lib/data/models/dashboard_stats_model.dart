@@ -51,9 +51,9 @@ class WeaponStat {
   factory WeaponStat.fromJson(Map<String, dynamic> json) => WeaponStat(
     weaponName: json['weapon_name'] ?? '',
     weaponIcon: json['weapon_icon'] ?? '⚔️',
-    count: json['count'] ?? 0,
-    avg: (json['avg'] ?? 0).toDouble(),
-    passRate: (json['pass_rate'] ?? 0).toDouble(),
+    count: _toInt(json['count']),
+    avg: _toDouble(json['avg']),
+    passRate: _toDouble(json['pass_rate']),
   );
 }
 
@@ -104,7 +104,7 @@ class RecentResult {
     soldierName: json['soldier_name'] ?? '',
     militaryId: json['military_id'],
     examTitle: json['exam_title'],
-    totalScore: (json['total_score'] ?? 0).toDouble(),
+    totalScore: _toDouble(json['total_score']),
     examDate: json['exam_date'] ?? '',
   );
 }

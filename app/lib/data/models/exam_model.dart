@@ -1,3 +1,5 @@
+double _toDouble(dynamic v) => v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? 0 : 0));
+
 class ExamModel {
   final String id;
   final String title;
@@ -38,7 +40,7 @@ class ExamModel {
     specialtyName: json['specialty_name'],
     itemCount: json['item_count'] ?? 0,
     resultCount: json['result_count'] ?? 0,
-    avgScore: json['avg_score']?.toDouble(),
+    avgScore: json['avg_score'] != null ? _toDouble(json['avg_score']) : null,
     items: (json['items'] as List?)
         ?.map((e) => ExamItem.fromJson(e)).toList(),
   );
