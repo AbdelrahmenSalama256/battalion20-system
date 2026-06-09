@@ -526,6 +526,19 @@ ai.post('/ask', auth, async (req, res) => {
 });
 app.use('/api/ai', ai);
 
+app.post('/api/seed', auth, async (req, res) => {
+  try {
+    await db.query('DELETE FROM announcements; DELETE FROM fitness_results; DELETE FROM fitness_exercises; DELETE FROM result_item_scores; DELETE FROM results; DELETE FROM exam_items; DELETE FROM exams; DELETE FROM soldiers; DELETE FROM specialties; DELETE FROM weapons;');
+    await db.query("INSERT INTO weapons (id,name,icon,color) VALUES ('a0000000-0000-0000-0000-000000000001','بندقية G3','🔫','#2d6a4f'),('a0000000-0000-0000-0000-000000000002','بندقية M16','🔫','#1b4332'),('a0000000-0000-0000-0000-000000000003','رشاش RPK','🛡️','#6b705c'),('a0000000-0000-0000-0000-000000000004','قناص SVD','🎯','#4a3f35'),('a0000000-0000-0000-0000-000000000005','هاون 60mm','💣','#7f4f24')");
+    await db.query("INSERT INTO specialties (id,weapon_id,name) VALUES ('b0000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','مشاة'),('b0000000-0000-0000-0000-000000000002','a0000000-0000-0000-0000-000000000001','اقتحام'),('b0000000-0000-0000-0000-000000000003','a0000000-0000-0000-0000-000000000003','رشاش'),('b0000000-0000-0000-0000-000000000004','a0000000-0000-0000-0000-000000000004','قناص'),('b0000000-0000-0000-0000-000000000005','a0000000-0000-0000-0000-000000000005','هاون')");
+    const ranks = await db.query('SELECT id FROM ranks ORDER BY sort_order');
+    const rankIds = ranks.rows.map(r => r.id);
+    await db.query("INSERT INTO soldiers (name,military_id,rank_id,weapon_id) VALUES ('أحمد علي','1001',$1,'a0000000-0000-0000-0000-000000000001'),('محمد حسن','1002',$1,'a0000000-0000-0000-0000-000000000001'),('خالد عمر','1003',$1,'a0000000-0000-0000-0000-000000000002'),('سعيد عبدالله','1004',$2,'a0000000-0000-0000-0000-000000000003'),('مصطفى إبراهيم','1005',$2,'a0000000-0000-0000-0000-000000000004'),('ناصر أحمد','1006',$1,'a0000000-0000-0000-0000-000000000002'),('عبدالرحمن صالح','1007',$1,'a0000000-0000-0000-0000-000000000001'),('طارق محمود','1008',$3,'a0000000-0000-0000-0000-000000000005'),('ياسر كمال','1009',$1,'a0000000-0000-0000-0000-000000000003'),('باسم سليمان','1010',$2,'a0000000-0000-0000-0000-000000000001')", [rankIds[0], rankIds[1], rankIds[2]]);
+    await db.query("INSERT INTO fitness_exercises (name,unit,higher_is_better,pass_mark) VALUES ('العدو 100 متر','ثانية',false,14),('العدو 3000 متر','دقيقة',false,14),('الضغط','عدة',true,40),('الجلوس','عدة',true,40),('السباحة 50 متر','ثانية',false,60),('العقبة العسكرية','دقيقة',false,5)");
+    res.json({ message: 'تم تعبئة البيانات بنجاح', seeded: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'حدث خطأ غير متوقع' });

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubits/settings/settings_cubit.dart';
 import '../../cubits/auth/auth_cubit.dart';
+import '../../../core/network/api_service.dart';
 import '../../../core/constants/app_constants.dart';
 
 class SettingsScreen extends StatelessWidget {
