@@ -1,5 +1,5 @@
 [build]
-  command = "cd dashboard && npm run build"
+  command = "cd dashboard && npm install && npm run build"
   publish = "dashboard/dist"
   functions = "netlify/functions"
 
