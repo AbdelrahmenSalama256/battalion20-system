@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_constants.dart';
 
 class AppTheme {
@@ -6,7 +7,7 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: const Color(AC.bg),
-
+      fontFamily: GoogleFonts.tajawal().fontFamily,
       useMaterial3: true,
       colorScheme: const ColorScheme.dark(
         primary: Color(AC.gold),
