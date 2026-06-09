@@ -1,3 +1,6 @@
+int _toInt(dynamic v) => v is int ? v : (v is String ? int.tryParse(v) ?? 0 : 0);
+double _toDouble(dynamic v) => v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? 0 : 0));
+
 class DashboardStats {
   final int totalSoldiers;
   final int totalResults;
@@ -16,9 +19,6 @@ class DashboardStats {
     required this.distribution,
     required this.recentResults,
   });
-
-  static int _toInt(dynamic v) => v is int ? v : (v is String ? int.tryParse(v) ?? 0 : 0);
-  static double _toDouble(dynamic v) => v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? 0 : 0));
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
     totalSoldiers: _toInt(json['totalSoldiers'] ?? json['total_soldiers']),
