@@ -49,7 +49,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'حدث خطأ غير متوقع' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Battalion20 API running on http://localhost:${PORT}`);
-  console.log(`🌐 Accepting requests from: ${FRONTEND_URL}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Battalion20 API running on http://localhost:${PORT}`);
+    console.log(`🌐 Accepting requests from: ${FRONTEND_URL}`);
+  });
+}
+
+module.exports = app;

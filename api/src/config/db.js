@@ -5,6 +5,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 5,
   ...(isProd ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
