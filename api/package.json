@@ -1,0 +1,21 @@
+{
+  "name": "battalion20-api",
+  "version": "2.0.0",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "migrate": "node -e \"require('./src/config/db').query(require('fs').readFileSync('./migrations/001_schema.sql','utf8')).then(()=>process.exit(0))\""
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.4.5",
+    "@anthropic-ai/sdk": "^0.24.0"
+  },
+  "devDependencies": { "nodemon": "^3.1.0" }
+}

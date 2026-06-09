@@ -1,0 +1,25 @@
+name: battalion20
+description: Battalion 20 Military Evaluation System
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^8.1.5
+  equatable: ^2.0.5
+  dio: ^5.4.3+1
+  flutter_secure_storage: ^9.2.4
+  fl_chart: ^0.69.2
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

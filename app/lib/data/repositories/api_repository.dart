@@ -1,0 +1,155 @@
+import '../../core/network/api_service.dart';
+import '../models/user_model.dart';
+import '../models/dashboard_stats_model.dart';
+import '../models/soldier_model.dart';
+import '../models/exam_model.dart';
+
+class ApiRepository {
+  final ApiService _api;
+
+  ApiRepository(this._api);
+
+  Future<UserModel> login(String username, String password) async {
+    final res = await _api.post('/auth/login', data: {
+      'username': username,
+      'password': password,
+    });
+    await _api.saveToken(res.data['token']);
+    return UserModel.fromJson(res.data['user']);
+  }
+
+  Future<void> logout() => _api.clearToken();
+
+  Future<UserModel> getMe() async {
+    final res = await _api.get('/auth/me');
+    return UserModel.fromJson(res.data);
+  }
+
+  Future<DashboardStats> getStats() async {
+    final res = await _api.get('/results/stats');
+    return DashboardStats.fromJson(res.data);
+  }
+
+  Future<List<SoldierModel>> getSoldiers({
+    String? search,
+    String? weaponId,
+    String? specialtyId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (weaponId != null) params['weaponId'] = weaponId;
+    if (specialtyId != null) params['specialtyId'] = specialtyId;
+    final res = await _api.get('/soldiers', params: params);
+    return (res.data as List).map((e) => SoldierModel.fromJson(e)).toList();
+  }
+
+  Future<SoldierModel> getSoldier(String id) async {
+    final res = await _api.get('/soldiers/$id');
+    return SoldierModel.fromJson(res.data);
+  }
+
+  Future<void> createSoldier(Map<String, dynamic> data) async {
+    await _api.post('/soldiers', data: data);
+  }
+
+  Future<void> updateSoldier(String id, Map<String, dynamic> data) async {
+    await _api.put('/soldiers/$id', data: data);
+  }
+
+  Future<void> deleteSoldier(String id) async {
+    await _api.delete('/soldiers/$id');
+  }
+
+  Future<List<Map<String, dynamic>>> getWeapons() async {
+    final res = await _api.get('/weapons');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<List<Map<String, dynamic>>> getSpecialties({String? weaponId}) async {
+    final params = <String, dynamic>{};
+    if (weaponId != null) params['weaponId'] = weaponId;
+    final res = await _api.get('/specialties', params: params);
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<List<Map<String, dynamic>>> getRanks({String? typeId}) async {
+    final params = <String, dynamic>{};
+    if (typeId != null) params['typeId'] = typeId;
+    final res = await _api.get('/ranks', params: params);
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<List<Map<String, dynamic>>> getRankTypes() async {
+    final res = await _api.get('/rank-types');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<List<ExamModel>> getExams({String? type, String? weaponId}) async {
+    final params = <String, dynamic>{};
+    if (type != null) params['type'] = type;
+    if (weaponId != null) params['weaponId'] = weaponId;
+    final res = await _api.get('/exams', params: params);
+    return (res.data as List).map((e) => ExamModel.fromJson(e)).toList();
+  }
+
+  Future<ExamModel> getExam(String id) async {
+    final res = await _api.get('/exams/$id');
+    return ExamModel.fromJson(res.data);
+  }
+
+  Future<void> createExam(Map<String, dynamic> data) async {
+    await _api.post('/exams', data: data);
+  }
+
+  Future<void> updateExam(String id, Map<String, dynamic> data) async {
+    await _api.put('/exams/$id', data: data);
+  }
+
+  Future<void> deleteExam(String id) async {
+    await _api.delete('/exams/$id');
+  }
+
+  Future<Map<String, dynamic>> getResults({
+    String? type, String? weaponId, String? soldierId,
+    int page = 1, int limit = 30,
+  }) async {
+    final params = <String, dynamic>{
+      'page': page, 'limit': limit,
+    };
+    if (type != null) params['type'] = type;
+    if (weaponId != null) params['weaponId'] = weaponId;
+    if (soldierId != null) params['soldierId'] = soldierId;
+    final res = await _api.get('/results', params: params);
+    return res.data;
+  }
+
+  Future<void> createResult(Map<String, dynamic> data) async {
+    await _api.post('/results', data: data);
+  }
+
+  Future<void> deleteResult(String id) async {
+    await _api.delete('/results/$id');
+  }
+
+  Future<List<Map<String, dynamic>>> getFitnessExercises() async {
+    final res = await _api.get('/fitness/exercises');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<void> createFitnessResult(Map<String, dynamic> data) async {
+    await _api.post('/fitness/results', data: data);
+  }
+
+  Future<List<Map<String, dynamic>>> getAnnouncements() async {
+    final res = await _api.get('/announcements');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<void> createAnnouncement(Map<String, dynamic> data) async {
+    await _api.post('/announcements', data: data);
+  }
+
+  Future<void> deleteAnnouncement(String id) async {
+    await _api.delete('/announcements/$id');
+  }
+}
