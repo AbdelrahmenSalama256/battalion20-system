@@ -33,7 +33,8 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, name: user.name, username: user.username, role: user.role }
     });
   } catch (e) {
-    res.status(500).json({ error: 'حدث خطأ في الخادم: ' + e.message });
+    console.error('Login error:', e.message, e.stack);
+    res.status(500).json({ error: 'DB: ' + e.message });
   }
 });
 
