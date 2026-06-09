@@ -18,14 +18,14 @@ class DashboardStats {
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
-    totalSoldiers: json['total_soldiers'] ?? 0,
-    totalResults: json['total_results'] ?? 0,
-    avgScore: (json['avg_score'] ?? 0).toDouble(),
-    passRate: (json['pass_rate'] ?? 0).toDouble(),
-    byWeapon: (json['by_weapon'] as List? ?? [])
+    totalSoldiers: json['totalSoldiers'] ?? json['total_soldiers'] ?? 0,
+    totalResults: json['totalResults'] ?? json['total_results'] ?? 0,
+    avgScore: ((json['avgScore'] ?? json['avg_score'] ?? 0) as num).toDouble(),
+    passRate: ((json['passRate'] ?? json['pass_rate'] ?? 0) as num).toDouble(),
+    byWeapon: ((json['byWeapon'] ?? json['by_weapon']) as List? ?? [])
         .map((e) => WeaponStat.fromJson(e)).toList(),
     distribution: ScoreDistribution.fromJson(json['distribution'] ?? {}),
-    recentResults: (json['recent_results'] as List? ?? [])
+    recentResults: ((json['recentResults'] ?? json['recent_results']) as List? ?? [])
         .map((e) => RecentResult.fromJson(e)).toList(),
   );
 }
@@ -72,7 +72,7 @@ class ScoreDistribution {
   factory ScoreDistribution.fromJson(Map<String, dynamic> json) =>
       ScoreDistribution(
         excellent: json['excellent'] ?? 0,
-        veryGood: json['very_good'] ?? 0,
+        veryGood: json['veryGood'] ?? json['very_good'] ?? 0,
         good: json['good'] ?? 0,
         acceptable: json['acceptable'] ?? 0,
         fail: json['fail'] ?? 0,

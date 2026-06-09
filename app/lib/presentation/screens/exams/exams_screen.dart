@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubits/exams/exams_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
@@ -21,8 +22,10 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
     _tabCtrl.addListener(() {
-      final types = ['general', 'weapon', 'specialty'];
-      context.read<ExamsCubit>().loadExams(type: types[_tabCtrl.index]);
+      if (!_tabCtrl.indexIsChanging) {
+        final types = ['general', 'weapon', 'specialty'];
+        context.read<ExamsCubit>().loadExams(type: types[_tabCtrl.index]);
+      }
     });
   }
 
@@ -34,9 +37,14 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
 
   void _showCreateDialog() {
     final api = context.read<ApiService>();
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => _ExamFormDialog(api: api, onCreated: () {
+      isScrollControlled: true,
+      backgroundColor: const Color(AC.card),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) => _ExamFormSheet(api: api, onCreated: () {
         final types = ['general', 'weapon', 'specialty'];
         context.read<ExamsCubit>().loadExams(type: types[_tabCtrl.index]);
       }),
@@ -48,7 +56,7 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 0),
           child: Row(
             children: [
               Expanded(
@@ -57,14 +65,27 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
                   labelColor: const Color(AC.gold),
                   unselectedLabelColor: const Color(AC.textSecondary),
                   indicatorColor: const Color(AC.gold),
-                  tabs: const [
-                    Tab(text: 'General'), Tab(text: 'Weapon'), Tab(text: 'Specialty'),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelStyle: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600),
+                  unselectedLabelStyle: TextStyle(fontSize: 13.sp),
+                  tabs: [
+                    Tab(text: 'عام'),
+                    Tab(text: 'سلاح'),
+                    Tab(text: 'تخصص'),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Color(AC.gold)),
-                onPressed: _showCreateDialog,
+              SizedBox(width: 8.w),
+              Container(
+                width: 44.r, height: 44.r,
+                decoration: BoxDecoration(
+                  color: const Color(AC.gold).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.add, color: const Color(AC.gold), size: 22.r),
+                  onPressed: _showCreateDialog,
+                ),
               ),
             ],
           ),
@@ -79,28 +100,76 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
                     return const Center(child: CircularProgressIndicator(color: Color(AC.gold)));
                   }
                   if (state is ExamsError) {
-                    return Center(child: Text(state.message, style: const TextStyle(color: Color(AC.danger))));
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 48.r, color: const Color(AC.danger)),
+                          SizedBox(height: 8.h),
+                          Text(state.message, style: TextStyle(fontSize: 14.sp, color: const Color(AC.danger))),
+                        ],
+                      ),
+                    );
                   }
                   if (state is! ExamsLoaded) return const SizedBox();
                   final exams = state.exams;
                   if (exams.isEmpty) {
-                    return const Center(child: Text('No exams found', style: TextStyle(color: Color(AC.textSecondary))));
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.assignment_outlined, size: 64.r, color: const Color(AC.textSecondary)),
+                          SizedBox(height: 12.h),
+                          Text('لا توجد امتحانات', style: TextStyle(fontSize: 16.sp, color: const Color(AC.textSecondary))),
+                        ],
+                      ),
+                    );
                   }
                   return ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     itemCount: exams.length,
                     itemBuilder: (ctx, i) {
                       final e = exams[i];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        child: ListTile(
-                          title: Text(e.title, style: const TextStyle(color: Color(AC.textPrimary), fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                            '${e.itemCount} items • ${e.resultCount} results',
-                            style: const TextStyle(fontSize: 12),
+                      final typeIcon = e.type == 'general' ? Icons.description : e.type == 'weapon' ? Icons.sports_martial_arts : Icons.school;
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 8.h),
+                        decoration: BoxDecoration(
+                          color: const Color(AC.card),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(AC.cardBorder)),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(14.w),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44.r, height: 44.r,
+                                decoration: BoxDecoration(
+                                  color: const Color(AC.gold).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Icon(typeIcon, color: const Color(AC.gold), size: 22.r),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(e.title, style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: const Color(AC.textPrimary))),
+                                    SizedBox(height: 2.h),
+                                    Row(
+                                      children: [
+                                        _infoChip('${e.itemCount} بند', Icons.list),
+                                        SizedBox(width: 8.w),
+                                        _infoChip('${e.resultCount} نتيجة', Icons.grading),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (e.avgScore != null) ScoreBadge(score: e.avgScore!),
+                            ],
                           ),
-                          trailing: e.avgScore != null
-                              ? ScoreBadge(score: e.avgScore!)
-                              : null,
                         ),
                       );
                     },
@@ -113,23 +182,33 @@ class _ExamsScreenState extends State<ExamsScreen> with SingleTickerProviderStat
       ],
     );
   }
+
+  Widget _infoChip(String label, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12.r, color: const Color(AC.textSecondary)),
+        SizedBox(width: 3.w),
+        Text(label, style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary))),
+      ],
+    );
+  }
 }
 
-class _ExamFormDialog extends StatefulWidget {
+class _ExamFormSheet extends StatefulWidget {
   final ApiService api;
   final VoidCallback onCreated;
-  const _ExamFormDialog({required this.api, required this.onCreated});
+  const _ExamFormSheet({required this.api, required this.onCreated});
 
   @override
-  State<_ExamFormDialog> createState() => _ExamFormDialogState();
+  State<_ExamFormSheet> createState() => _ExamFormSheetState();
 }
 
-class _ExamFormDialogState extends State<_ExamFormDialog> {
+class _ExamFormSheetState extends State<_ExamFormSheet> {
   final _titleCtrl = TextEditingController();
   final _itemsCtrl = TextEditingController();
   String _type = 'general';
   String? _weaponId;
-  String? _specialtyId;
   List<Map<String, dynamic>> _weapons = [];
 
   @override
@@ -161,7 +240,6 @@ class _ExamFormDialogState extends State<_ExamFormDialog> {
       'title': _titleCtrl.text,
       'type': _type,
       'weaponId': _type == 'weapon' ? _weaponId : null,
-      'specialtyId': _type == 'specialty' ? _specialtyId : null,
       'items': items,
     };
     try {
@@ -171,9 +249,12 @@ class _ExamFormDialogState extends State<_ExamFormDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create exam')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('فشل إنشاء الامتحان', style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: const Color(AC.danger),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ));
       }
     }
   }
@@ -187,60 +268,92 @@ class _ExamFormDialogState extends State<_ExamFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(AC.card),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Create Exam', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(AC.gold))),
-              const SizedBox(height: 16),
-              TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Exam Title')),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _type,
-                decoration: const InputDecoration(labelText: 'Type'),
-                dropdownColor: const Color(AC.card),
-                items: const [
-                  DropdownMenuItem(value: 'general', child: Text('General')),
-                  DropdownMenuItem(value: 'weapon', child: Text('Weapon')),
-                  DropdownMenuItem(value: 'specialty', child: Text('Specialty')),
-                ],
-                onChanged: (v) => setState(() => _type = v!),
-              ),
-              if (_type == 'weapon') ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: 'Weapon'),
-                  dropdownColor: const Color(AC.card),
-                  items: _weapons.map<DropdownMenuItem<String>>((w) => DropdownMenuItem<String>(value: w['id'] as String?, child: Text(w['name'] ?? ''))).toList(),
-                  onChanged: (v) => setState(() => _weaponId = v),
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 16.w, 20.w, bottomInset + 16.h),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 48.w, height: 4.h,
+                decoration: BoxDecoration(
+                  color: const Color(AC.cardBorder),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Text('إنشاء امتحان', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
+            SizedBox(height: 16.h),
+            TextField(controller: _titleCtrl, decoration: InputDecoration(labelText: 'عنوان الامتحان', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h))),
+            SizedBox(height: 12.h),
+            DropdownButtonFormField<String>(
+              value: _type,
+              decoration: InputDecoration(labelText: 'النوع', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h)),
+              dropdownColor: const Color(AC.card),
+              items: const [
+                DropdownMenuItem(value: 'general', child: Text('عام')),
+                DropdownMenuItem(value: 'weapon', child: Text('سلاح')),
+                DropdownMenuItem(value: 'specialty', child: Text('تخصص')),
               ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: _itemsCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Exam Items',
-                  hintText: 'Item 1 | 10\nItem 2 | 15',
-                ),
-                maxLines: 6,
-              ),
-              const SizedBox(height: 8),
-              const Text('Write each item on a new line, use | to specify max score',
-                  style: TextStyle(fontSize: 11, color: Color(AC.textSecondary))),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(child: ElevatedButton(onPressed: _save, child: const Text('Create'))),
-                  const SizedBox(width: 12),
-                  Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
-                ],
+              onChanged: (v) => setState(() => _type = v!),
+            ),
+            if (_type == 'weapon') ...[
+              SizedBox(height: 12.h),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'السلاح', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h)),
+                dropdownColor: const Color(AC.card),
+                items: _weapons.map<DropdownMenuItem<String>>((w) => DropdownMenuItem<String>(
+                  value: w['id'] as String?, child: Text(w['name'] ?? '', style: TextStyle(fontSize: 14.sp)),
+                )).toList(),
+                onChanged: (v) => setState(() => _weaponId = v),
               ),
             ],
-          ),
+            SizedBox(height: 12.h),
+            TextField(
+              controller: _itemsCtrl,
+              decoration: InputDecoration(
+                labelText: 'بنود الامتحان',
+                hintText: 'البند الأول | 10\nالبند الثاني | 15',
+                hintStyle: TextStyle(fontSize: 13.sp, color: const Color(AC.textSecondary).withOpacity(0.5)),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              ),
+              maxLines: 6,
+              style: TextStyle(fontSize: 14.sp),
+            ),
+            SizedBox(height: 4.h),
+            Text('اكتب كل بند في سطر جديد، استخدم | لتحديد الدرجة القصوى',
+                style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary))),
+            SizedBox(height: 20.h),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    ),
+                    child: Text('إنشاء', style: TextStyle(fontSize: 15.sp)),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      foregroundColor: const Color(AC.textSecondary),
+                    ),
+                    child: Text('إلغاء', style: TextStyle(fontSize: 15.sp)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

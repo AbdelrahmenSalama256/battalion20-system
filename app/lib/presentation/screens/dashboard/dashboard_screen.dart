@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubits/dashboard/dashboard_cubit.dart';
 import '../../cubits/auth/auth_cubit.dart';
 import '../../cubits/soldiers/soldiers_cubit.dart';
@@ -12,6 +13,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
 import '../../../data/models/dashboard_stats_model.dart';
 import '../../widgets/score_badge.dart';
+import '../../widgets/app_drawer.dart';
 import '../soldiers/soldiers_screen.dart';
 import '../exams/exams_screen.dart';
 import '../results/results_screen.dart';
@@ -28,6 +30,15 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
+  final _tabs = [
+    _TabItem('الرئيسية', Icons.dashboard_outlined, Icons.dashboard),
+    _TabItem('الأفراد', Icons.people_outline, Icons.people),
+    _TabItem('الامتحانات', Icons.assignment_outlined, Icons.assignment),
+    _TabItem('النتائج', Icons.grading_outlined, Icons.grading),
+    _TabItem('اللياقة', Icons.fitness_center_outlined, Icons.fitness_center),
+    _TabItem('الإعلانات', Icons.campaign_outlined, Icons.campaign),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final api = context.read<ApiService>();
     final screens = [
-      _buildDashboard(context),
+      _buildDashboard(),
       BlocProvider(create: (_) => SoldiersCubit(api)..loadSoldiers(), child: const SoldiersScreen()),
       BlocProvider(create: (_) => ExamsCubit(api)..loadExams(), child: const ExamsScreen()),
       BlocProvider(create: (_) => ResultsCubit(api)..loadResults(), child: const ResultsScreen()),
@@ -46,30 +57,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       BlocProvider(create: (_) => AnnouncementsCubit(api)..loadAnnouncements(), child: const AnnouncementsScreen()),
     ];
 
-    final titles = ['Dashboard', 'Soldiers', 'Exams', 'Results', 'Fitness', 'Announcements'];
-    final icons = [
-      Icons.dashboard, Icons.people, Icons.assignment, Icons.grading, Icons.fitness_center, Icons.campaign,
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_currentIndex]),
+        title: Text(_tabs[_currentIndex].label, style: TextStyle(fontSize: 18.sp)),
+        centerTitle: true,
         actions: [
           BlocBuilder<AuthCubit, AuthState>(
             builder: (ctx, state) {
               if (state is AuthAuthenticated) {
-                return PopupMenuButton<String>(
-                  icon: const Icon(Icons.account_circle),
-                  onSelected: (v) {
-                    if (v == 'logout') context.read<AuthCubit>().logout();
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(value: 'info', enabled: false,
-                      child: Text('${state.user.name} (${state.user.role})'),
+                return Padding(
+                  padding: EdgeInsets.only(left: 8.w),
+                  child: GestureDetector(
+                    onTap: () => Scaffold.of(context).openEndDrawer(),
+                    child: CircleAvatar(
+                      radius: 18.r,
+                      backgroundColor: const Color(AC.gold).withOpacity(0.2),
+                      child: Text(
+                        state.user.name.isNotEmpty ? state.user.name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: const Color(AC.gold),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.sp,
+                        ),
+                      ),
                     ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(value: 'logout', child: Text('Logout')),
-                  ],
+                  ),
                 );
               }
               return const SizedBox();
@@ -77,191 +89,341 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: screens[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() {
-          _currentIndex = i;
-          if (i == 0) context.read<DashboardCubit>().loadStats();
-        }),
-        backgroundColor: const Color(AC.card),
-        indicatorColor: const Color(AC.gold).withOpacity(0.2),
-        destinations: List.generate(titles.length, (i) => NavigationDestination(
-          icon: Icon(icons[i], color: const Color(AC.textSecondary)),
-          selectedIcon: Icon(icons[i], color: const Color(AC.gold)),
-          label: titles[i],
-        )),
+      endDrawer: const AppDrawer(),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: screens,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: const Color(AC.cardBorder), width: 0.5)),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (i) {
+            setState(() => _currentIndex = i);
+            if (i == 0) context.read<DashboardCubit>().loadStats();
+          },
+          backgroundColor: const Color(AC.card),
+          indicatorColor: const Color(AC.gold).withOpacity(0.15),
+          height: 70.h,
+          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+          destinations: _tabs.map((t) => NavigationDestination(
+            icon: Icon(t.icon, color: const Color(AC.textSecondary), size: 22.r),
+            selectedIcon: Icon(t.selectedIcon, color: const Color(AC.gold), size: 22.r),
+            label: t.label,
+          )).toList(),
+        ),
       ),
     );
   }
 
-  Widget _buildDashboard(BuildContext context) {
+  Widget _buildDashboard() {
     return BlocBuilder<DashboardCubit, DashboardState>(
       builder: (ctx, state) {
         if (state is DashboardLoading) {
-          return const Center(child: CircularProgressIndicator(color: Color(AC.gold)));
+          return Center(child: CircularProgressIndicator(color: const Color(AC.gold)));
         }
         if (state is DashboardError) {
-          return Center(child: Text(state.message, style: const TextStyle(color: Color(AC.danger))));
+          return _buildError('فشل تحميل البيانات', () => context.read<DashboardCubit>().loadStats());
         }
         if (state is! DashboardLoaded) return const SizedBox();
         final stats = state.stats;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSummaryRow(stats),
-              const SizedBox(height: 16),
-              _buildDistributionChart(stats.distribution),
-              const SizedBox(height: 16),
-              _buildWeaponStats(stats.byWeapon),
-              const SizedBox(height: 16),
-              _buildRecentResults(stats.recentResults),
-            ],
+        return RefreshIndicator(
+          color: const Color(AC.gold),
+          onRefresh: () => context.read<DashboardCubit>().loadStats(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.all(16.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSummaryGrid(stats),
+                SizedBox(height: 16.h),
+                _buildDistributionCard(stats.distribution),
+                SizedBox(height: 16.h),
+                _buildWeaponCard(stats.byWeapon),
+                SizedBox(height: 16.h),
+                _buildRecentCard(stats.recentResults),
+                SizedBox(height: 24.h),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildSummaryRow(DashboardStats stats) {
-    return Row(
+  Widget _buildError(String msg, VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(32.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_off, size: 64.r, color: const Color(AC.textSecondary)),
+            SizedBox(height: 16.h),
+            Text(msg, style: TextStyle(fontSize: 16.sp, color: const Color(AC.textSecondary)), textAlign: TextAlign.center),
+            SizedBox(height: 24.h),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryGrid(DashboardStats stats) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10.h,
+      crossAxisSpacing: 10.w,
+      childAspectRatio: 1.6,
       children: [
-        _summaryCard('Soldiers', stats.totalSoldiers.toString(), Icons.people, const Color(AC.gold)),
-        const SizedBox(width: 8),
-        _summaryCard('Results', stats.totalResults.toString(), Icons.grading, const Color(AC.success)),
-        const SizedBox(width: 8),
-        _summaryCard('Average', '${stats.avgScore}%', Icons.trending_up, Colors.cyan),
-        const SizedBox(width: 8),
-        _summaryCard('Pass Rate', '${stats.passRate}%', Icons.check_circle, Colors.green),
+        _summaryCard('الأفراد', stats.totalSoldiers.toString(), Icons.people_outline, const Color(AC.gold)),
+        _summaryCard('النتائج', stats.totalResults.toString(), Icons.grading_outlined, const Color(AC.success)),
+        _summaryCard('المعدل', '${stats.avgScore}%', Icons.trending_up, const Color(0xFF4FC3F7)),
+        _summaryCard('النجاح', '${stats.passRate}%', Icons.check_circle_outline, const Color(0xFF66BB6A)),
       ],
     );
   }
 
   Widget _summaryCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(AC.card),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(AC.cardBorder)),
+      ),
+      padding: EdgeInsets.all(14.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(height: 8),
-              Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-              Text(label, style: const TextStyle(fontSize: 11, color: Color(AC.textSecondary))),
+              Icon(icon, color: color, size: 22.r),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Text(value, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: color)),
+              ),
             ],
           ),
-        ),
+          SizedBox(height: 4.h),
+          Text(label, style: TextStyle(fontSize: 13.sp, color: const Color(AC.textSecondary))),
+        ],
       ),
     );
   }
 
-  Widget _buildDistributionChart(ScoreDistribution dist) {
-    final data = [
-      _ChartData('Excellent', dist.excellent.toDouble(), const Color(0xFF1B8A2E)),
-      _ChartData('Very Good', dist.veryGood.toDouble(), const Color(0xFF2D6A4F)),
-      _ChartData('Good', dist.good.toDouble(), const Color(AC.gold)),
-      _ChartData('Acceptable', dist.acceptable.toDouble(), const Color(AC.warning)),
-      _ChartData('Fail', dist.fail.toDouble(), const Color(AC.danger)),
+  Widget _buildDistributionCard(ScoreDistribution dist) {
+    final total = dist.excellent + dist.veryGood + dist.good + dist.acceptable + dist.fail;
+    final items = [
+      _DistItem('ممتاز', dist.excellent, total, const Color(0xFF1B8A2E)),
+      _DistItem('جيد جداً', dist.veryGood, total, const Color(0xFF2D6A4F)),
+      _DistItem('جيد', dist.good, total, const Color(AC.gold)),
+      _DistItem('مقبول', dist.acceptable, total, const Color(AC.warning)),
+      _DistItem('راسب', dist.fail, total, const Color(AC.danger)),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Score Distribution', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: PieChart(
-                PieChartData(
-                  sections: data.map((d) => PieChartSectionData(
-                    value: d.value,
-                    title: d.value > 0 ? '${d.value.toInt()}' : '',
-                    color: d.color,
-                    radius: 60,
-                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                  )).toList(),
-                  centerSpaceRadius: 40,
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(AC.card),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(AC.cardBorder)),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pie_chart_outline, color: const Color(AC.gold), size: 18.r),
+              SizedBox(width: 8.w),
+              Text('توزيع الدرجات', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          if (total > 0)
+            ...items.map((i) => Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(width: 10.r, height: 10.r, decoration: BoxDecoration(color: i.color, shape: BoxShape.circle)),
+                          SizedBox(width: 8.w),
+                          Text(i.label, style: TextStyle(fontSize: 13.sp, color: const Color(AC.textPrimary))),
+                        ],
+                      ),
+                      Text('${i.count} (${i.percent.toStringAsFixed(1)}%)', style: TextStyle(fontSize: 13.sp, color: i.color, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4.r),
+                    child: LinearProgressIndicator(
+                      value: i.fraction,
+                      backgroundColor: const Color(AC.cardBorder),
+                      color: i.color,
+                      minHeight: 6.h,
+                    ),
+                  ),
+                ],
+              ),
+            ))
+          else
+            Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.h),
+                child: Text('لا توجد نتائج بعد', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textSecondary))),
               ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: data.map((d) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(width: 12, height: 12, decoration: BoxDecoration(
-                    color: d.color, shape: BoxShape.circle,
-                  )),
-                  const SizedBox(width: 4),
-                  Text(d.label, style: const TextStyle(fontSize: 12, color: Color(AC.textSecondary))),
-                ],
-              )).toList(),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildWeaponStats(List<WeaponStat> byWeapon) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('By Weapon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
+  Widget _buildWeaponCard(List<WeaponStat> byWeapon) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(AC.card),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(AC.cardBorder)),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sports_martial_arts, color: const Color(AC.gold), size: 18.r),
+              SizedBox(width: 8.w),
+              Text('حسب السلاح', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          if (byWeapon.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Center(child: Text('لا توجد بيانات', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textSecondary)))),
+            )
+          else
             ...byWeapon.map((w) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: EdgeInsets.only(bottom: 8.h),
               child: Row(
                 children: [
-                  Text(w.weaponIcon, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(w.weaponName, style: const TextStyle(color: Color(AC.textPrimary)))),
-                  Text('${w.count} soldiers', style: const TextStyle(color: Color(AC.textSecondary), fontSize: 12)),
-                  const SizedBox(width: 12),
-                  ScoreBadge(score: w.avg, fontSize: 12),
+                  Container(
+                    width: 40.r, height: 40.r,
+                    decoration: BoxDecoration(
+                      color: const Color(AC.gold).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Center(child: Text(w.weaponIcon, style: TextStyle(fontSize: 20.sp))),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(w.weaponName, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(AC.textPrimary))),
+                        Text('${w.count} فرد', style: TextStyle(fontSize: 12.sp, color: const Color(AC.textSecondary))),
+                      ],
+                    ),
+                  ),
+                  ScoreBadge(score: w.avg),
                 ],
               ),
             )),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildRecentResults(List<RecentResult> recent) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Recent Results', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ...recent.map((r) => ListTile(
-              dense: true,
-              title: Text(r.soldierName, style: const TextStyle(color: Color(AC.textPrimary), fontSize: 14)),
-              subtitle: Text(r.examTitle ?? '', style: const TextStyle(fontSize: 12)),
-              trailing: ScoreBadge(score: r.totalScore),
+  Widget _buildRecentCard(List<RecentResult> recent) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(AC.card),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(AC.cardBorder)),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history, color: const Color(AC.gold), size: 18.r),
+              SizedBox(width: 8.w),
+              Text('آخر النتائج', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          if (recent.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Center(child: Text('لا توجد نتائج', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textSecondary)))),
+            )
+          else
+            ...recent.map((r) => Padding(
+              padding: EdgeInsets.symmetric(vertical: 6.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36.r, height: 36.r,
+                    decoration: BoxDecoration(
+                      color: const Color(AC.gold).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Center(child: Icon(Icons.person, color: const Color(AC.gold), size: 18.r)),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(r.soldierName, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: const Color(AC.textPrimary))),
+                        if (r.examTitle != null)
+                          Text(r.examTitle!, style: TextStyle(fontSize: 12.sp, color: const Color(AC.textSecondary))),
+                      ],
+                    ),
+                  ),
+                  ScoreBadge(score: r.totalScore),
+                ],
+              ),
             )),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _ChartData {
+class _TabItem {
   final String label;
-  final double value;
+  final IconData icon;
+  final IconData selectedIcon;
+  _TabItem(this.label, this.icon, this.selectedIcon);
+}
+
+class _DistItem {
+  final String label;
+  final int count;
+  final int total;
   final Color color;
-  _ChartData(this.label, this.value, this.color);
+  _DistItem(this.label, this.count, this.total, this.color);
+  double get fraction => total > 0 ? count / total : 0;
+  double get percent => total > 0 ? (count / total) * 100 : 0;
 }

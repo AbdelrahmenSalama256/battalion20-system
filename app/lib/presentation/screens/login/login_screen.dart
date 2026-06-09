@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubits/auth/auth_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -26,7 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() {
     if (_usernameCtrl.text.isEmpty || _passwordCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter username and password')),
+        SnackBar(
+          content: const Text('من فضلك أدخل اسم المستخدم وكلمة المرور'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       );
       return;
     }
@@ -35,72 +40,148 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 24.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (!isLandscape) SizedBox(height: 40.h),
               Container(
-                width: 100, height: 100,
+                width: isLandscape ? 60.r : 90.r,
+                height: isLandscape ? 60.r : 90.r,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(AC.gold), width: 3),
+                  border: Border.all(color: const Color(AC.gold), width: 2.5.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(AC.gold).withOpacity(0.2),
+                      blurRadius: 20.r,
+                      spreadRadius: 2.r,
+                    ),
+                  ],
                 ),
-                child: Icon(Icons.shield, size: 50, color: const Color(0xFFC9A84C)),
+                child: Icon(
+                  Icons.shield_moon_outlined,
+                  size: isLandscape ? 30.r : 45.r,
+                  color: const Color(AC.gold),
+                ),
               ),
-              const SizedBox(height: 16),
-              Text('Battalion 20', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFFC9A84C))),
-              const SizedBox(height: 8),
-              Text('Military Evaluation System', style: const TextStyle(fontSize: 16, color: Color(0xFF9CAF88))),
-              const SizedBox(height: 48),
+              SizedBox(height: 16.h),
+              Text(
+                'كتيبة ٢٠',
+                style: TextStyle(
+                  fontSize: isLandscape ? 20.sp : 28.sp,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(AC.gold),
+                  letterSpacing: 2,
+                ),
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                'نظام التقييم العسكري',
+                style: TextStyle(
+                  fontSize: isLandscape ? 12.sp : 14.sp,
+                  color: const Color(AC.textSecondary),
+                  letterSpacing: 1,
+                ),
+              ),
+              SizedBox(height: isLandscape ? 24.h : 48.h),
               TextField(
                 controller: _usernameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: Icon(Icons.person, color: Color(AC.gold)),
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'اسم المستخدم',
+                  hintText: 'أدخل اسم المستخدم',
+                  prefixIcon: Icon(Icons.person_outline, color: const Color(AC.gold), size: 20.r),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 14.h),
               TextField(
                 controller: _passwordCtrl,
                 obscureText: _obscured,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock, color: Color(AC.gold)),
+                  labelText: 'كلمة المرور',
+                  hintText: 'أدخل كلمة المرور',
+                  prefixIcon: Icon(Icons.lock_outline, color: const Color(AC.gold), size: 20.r),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscured ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: const Color(AC.textSecondary),
+                      size: 20.r,
+                    ),
                     onPressed: () => setState(() => _obscured = !_obscured),
                   ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
-                onSubmitted: (_) => _login(),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32.h),
               BlocConsumer<AuthCubit, AuthState>(
                 listener: (ctx, state) {
                   if (state is AuthAuthenticated) {
-                    Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const DashboardScreen()));
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                    );
                   } else if (state is AuthError) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.message)),
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: const Color(AC.danger),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     );
                   }
                 },
                 builder: (ctx, state) {
                   if (state is AuthLoading) {
-                    return const CircularProgressIndicator(color: Color(AC.gold));
+                    return SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: null,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                          backgroundColor: const Color(AC.gold).withOpacity(0.6),
+                        ),
+                        child: SizedBox(
+                          height: 20.h,
+                          width: 20.w,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.r,
+                            color: const Color(AC.bg),
+                          ),
+                        ),
+                      ),
+                    );
                   }
                   return SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _login,
-                      child: const Text('Login'),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                        backgroundColor: const Color(AC.gold),
+                        foregroundColor: const Color(AC.bg),
+                        elevation: 2,
+                        shadowColor: const Color(AC.gold).withOpacity(0.4),
+                      ),
+                      child: Text(
+                        'تسجيل الدخول',
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   );
                 },
               ),
+              SizedBox(height: 40.h),
             ],
           ),
         ),

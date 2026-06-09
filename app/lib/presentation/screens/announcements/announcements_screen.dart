@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubits/announcements/announcements_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
@@ -15,9 +16,14 @@ class AnnouncementsScreen extends StatefulWidget {
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   void _showCreateDialog() {
     final api = context.read<ApiService>();
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => _AnnouncementFormDialog(api: api, onCreated: () {
+      isScrollControlled: true,
+      backgroundColor: const Color(AC.card),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) => _AnnouncementFormSheet(api: api, onCreated: () {
         context.read<AnnouncementsCubit>().loadAnnouncements();
       }),
     );
@@ -27,15 +33,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     switch (priority) {
       case 'urgent': return const Color(AC.danger);
       case 'info': return const Color(AC.success);
-      default: return const Color(AC.textSecondary);
+      default: return const Color(AC.gold);
     }
   }
 
   String _priorityLabel(String priority) {
     switch (priority) {
-      case 'urgent': return 'Urgent';
-      case 'info': return 'Info';
-      default: return 'Normal';
+      case 'urgent': return 'عاجل';
+      case 'info': return 'معلومات';
+      default: return 'عادي';
     }
   }
 
@@ -44,14 +50,23 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.fromLTRB(16.w, 12.h, 12.w, 8.h),
           child: Row(
             children: [
-              const Text('Announcements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Icon(Icons.campaign, color: const Color(AC.gold), size: 20.r),
+              SizedBox(width: 8.w),
+              Text('الإعلانات', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
               const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Color(AC.gold)),
-                onPressed: _showCreateDialog,
+              Container(
+                width: 44.r, height: 44.r,
+                decoration: BoxDecoration(
+                  color: const Color(AC.gold).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.add, color: const Color(AC.gold), size: 22.r),
+                  onPressed: _showCreateDialog,
+                ),
               ),
             ],
           ),
@@ -63,49 +78,92 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 return const Center(child: CircularProgressIndicator(color: Color(AC.gold)));
               }
               if (state is AnnouncementsError) {
-                return Center(child: Text(state.message, style: const TextStyle(color: Color(AC.danger))));
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48.r, color: const Color(AC.danger)),
+                      SizedBox(height: 8.h),
+                      Text(state.message, style: TextStyle(fontSize: 14.sp, color: const Color(AC.danger))),
+                    ],
+                  ),
+                );
               }
               if (state is! AnnouncementsLoaded) return const SizedBox();
               final announcements = state.announcements;
               if (announcements.isEmpty) {
-                return const Center(child: Text('No announcements', style: TextStyle(color: Color(AC.textSecondary))));
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.campaign_outlined, size: 64.r, color: const Color(AC.textSecondary)),
+                      SizedBox(height: 12.h),
+                      Text('لا توجد إعلانات', style: TextStyle(fontSize: 16.sp, color: const Color(AC.textSecondary))),
+                    ],
+                  ),
+                );
               }
-              return ListView.builder(
-                itemCount: announcements.length,
-                itemBuilder: (ctx, i) {
-                  final a = announcements[i];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _priorityColor(a['priority'] ?? 'normal').withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _priorityLabel(a['priority'] ?? 'normal'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _priorityColor(a['priority'] ?? 'normal'),
-                            fontWeight: FontWeight.bold,
-                          ),
+              return RefreshIndicator(
+                color: const Color(AC.gold),
+                onRefresh: () => context.read<AnnouncementsCubit>().loadAnnouncements(),
+                child: ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                  itemCount: announcements.length,
+                  itemBuilder: (ctx, i) {
+                    final a = announcements[i];
+                    final priority = a['priority'] ?? 'normal';
+                    final pColor = _priorityColor(priority);
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      decoration: BoxDecoration(
+                        color: const Color(AC.card),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: const Color(AC.cardBorder)),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(14.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                                  decoration: BoxDecoration(
+                                    color: pColor.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(color: pColor.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    _priorityLabel(priority),
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      color: pColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                Expanded(
+                                  child: Text(a['title'] ?? '', style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: const Color(AC.textPrimary))),
+                                ),
+                              ],
+                            ),
+                            if (a['body'] != null && (a['body'] as String).isNotEmpty) ...[
+                              SizedBox(height: 8.h),
+                              Text(a['body'], style: TextStyle(fontSize: 13.sp, color: const Color(AC.textSecondary)), maxLines: 4, overflow: TextOverflow.ellipsis),
+                            ],
+                            SizedBox(height: 8.h),
+                            Text(
+                              '${a['created_by_name'] ?? ''} • ${a['created_at']?.toString().substring(0, 10) ?? ''}',
+                              style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary).withOpacity(0.6)),
+                            ),
+                          ],
                         ),
                       ),
-                      title: Text(a['title'] ?? '', style: const TextStyle(color: Color(AC.textPrimary), fontWeight: FontWeight.bold)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (a['body'] != null) Text(a['body'], maxLines: 2, overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 4),
-                          Text('${a['created_by_name'] ?? ''} • ${a['created_at']?.toString().substring(0, 10) ?? ''}',
-                              style: const TextStyle(fontSize: 11, color: Color(AC.textSecondary))),
-                        ],
-                      ),
-                      isThreeLine: true,
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               );
             },
           ),
@@ -115,16 +173,16 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   }
 }
 
-class _AnnouncementFormDialog extends StatefulWidget {
+class _AnnouncementFormSheet extends StatefulWidget {
   final ApiService api;
   final VoidCallback onCreated;
-  const _AnnouncementFormDialog({required this.api, required this.onCreated});
+  const _AnnouncementFormSheet({required this.api, required this.onCreated});
 
   @override
-  State<_AnnouncementFormDialog> createState() => _AnnouncementFormDialogState();
+  State<_AnnouncementFormSheet> createState() => _AnnouncementFormSheetState();
 }
 
-class _AnnouncementFormDialogState extends State<_AnnouncementFormDialog> {
+class _AnnouncementFormSheetState extends State<_AnnouncementFormSheet> {
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   String _priority = 'normal';
@@ -142,9 +200,12 @@ class _AnnouncementFormDialogState extends State<_AnnouncementFormDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create announcement')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('فشل إنشاء الإعلان', style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: const Color(AC.danger),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ));
       }
     }
   }
@@ -158,37 +219,65 @@ class _AnnouncementFormDialogState extends State<_AnnouncementFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(AC.card),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 16.w, 20.w, bottomInset + 16.h),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('New Announcement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(AC.gold))),
-            const SizedBox(height: 16),
-            TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
-            const SizedBox(height: 12),
-            TextField(controller: _bodyCtrl, decoration: const InputDecoration(labelText: 'Body'), maxLines: 4),
-            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 48.w, height: 4.h,
+                decoration: BoxDecoration(
+                  color: const Color(AC.cardBorder),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Text('إعلان جديد', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
+            SizedBox(height: 16.h),
+            TextField(controller: _titleCtrl, decoration: InputDecoration(labelText: 'العنوان', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h))),
+            SizedBox(height: 12.h),
+            TextField(controller: _bodyCtrl, decoration: InputDecoration(labelText: 'المحتوى', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h)), maxLines: 4),
+            SizedBox(height: 12.h),
             DropdownButtonFormField<String>(
               value: _priority,
-              decoration: const InputDecoration(labelText: 'Priority'),
+              decoration: InputDecoration(labelText: 'الأولوية', contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h)),
               dropdownColor: const Color(AC.card),
               items: const [
-                DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                DropdownMenuItem(value: 'info', child: Text('Info')),
-                DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
+                DropdownMenuItem(value: 'normal', child: Text('عادي')),
+                DropdownMenuItem(value: 'info', child: Text('معلومات')),
+                DropdownMenuItem(value: 'urgent', child: Text('عاجل')),
               ],
               onChanged: (v) => setState(() => _priority = v!),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h),
             Row(
               children: [
-                Expanded(child: ElevatedButton(onPressed: _save, child: const Text('Post'))),
-                const SizedBox(width: 12),
-                Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    ),
+                    child: Text('نشر', style: TextStyle(fontSize: 15.sp)),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      foregroundColor: const Color(AC.textSecondary),
+                    ),
+                    child: Text('إلغاء', style: TextStyle(fontSize: 15.sp)),
+                  ),
+                ),
               ],
             ),
           ],
