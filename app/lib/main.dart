@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/constants/app_constants.dart';
@@ -38,6 +39,13 @@ class BattalionApp extends StatelessWidget {
             title: AC.appName,
             theme: AppTheme.darkTheme,
             debugShowCheckedModeBanner: false,
+            locale: const Locale('ar'),
+            supportedLocales: const [Locale('ar')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             home: BlocBuilder<AuthCubit, AuthState>(
               builder: (ctx, state) {
                 if (state is AuthAuthenticated) {
