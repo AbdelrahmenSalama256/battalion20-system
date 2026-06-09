@@ -1,6 +1,6 @@
 [build]
   base = "dashboard"
-  command = "rm -rf node_modules package-lock.json && NODE_ENV=development npm install && npm run build"
+  command = "rm -rf node_modules package-lock.json && NODE_ENV=development npm install && cd .. && npm install && cd dashboard && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
