@@ -10,10 +10,9 @@ const serverless = require('serverless-http');
 
 const isProd = process.env.NODE_ENV === 'production';
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 5,
+  connectionString: process.env.DATABASE_URL ? process.env.DATABASE_URL.split('?')[0] : undefined,
   ...(isProd ? { ssl: { rejectUnauthorized: false } } : {}),
-
+  max: 5,
 });
 const db = { query: (text, params) => pool.query(text, params), pool };
 pool.query('SELECT 1').then(() => console.log('DB connected')).catch(e => console.error('DB fail:', e.message));
