@@ -526,41 +526,6 @@ ai.post('/ask', auth, async (req, res) => {
 });
 app.use('/api/ai', ai);
 
-app.post('/api/seed', auth, async (req, res) => {
-  try {
-    await db.query('DELETE FROM announcements; DELETE FROM fitness_results; DELETE FROM fitness_exercises; DELETE FROM result_item_scores; DELETE FROM results; DELETE FROM exam_items; DELETE FROM exams; DELETE FROM soldiers; DELETE FROM specialties; DELETE FROM weapons;');
-    await db.query("INSERT INTO weapons (id,name,icon,color) VALUES ('a0000000-0000-0000-0000-000000000001','بندقية G3','🔫','#2d6a4f'),('a0000000-0000-0000-0000-000000000002','بندقية M16','🔫','#1b4332'),('a0000000-0000-0000-0000-000000000003','رشاش RPK','🛡️','#6b705c'),('a0000000-0000-0000-0000-000000000004','قناص SVD','🎯','#4a3f35'),('a0000000-0000-0000-0000-000000000005','هاون 60mm','💣','#7f4f24')");
-    await db.query("INSERT INTO specialties (id,weapon_id,name) VALUES ('b0000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','مشاة'),('b0000000-0000-0000-0000-000000000002','a0000000-0000-0000-0000-000000000001','اقتحام'),('b0000000-0000-0000-0000-000000000003','a0000000-0000-0000-0000-000000000003','رشاش'),('b0000000-0000-0000-0000-000000000004','a0000000-0000-0000-0000-000000000004','قناص'),('b0000000-0000-0000-0000-000000000005','a0000000-0000-0000-0000-000000000005','هاون')");
-    const ranks = await db.query('SELECT id FROM ranks ORDER BY sort_order');
-    const rankIds = ranks.rows.map(r => r.id);
-    await db.query("INSERT INTO soldiers (name,military_id,rank_id,weapon_id) VALUES ('أحمد علي','1001',$1,'a0000000-0000-0000-0000-000000000001'),('محمد حسن','1002',$1,'a0000000-0000-0000-0000-000000000001'),('خالد عمر','1003',$1,'a0000000-0000-0000-0000-000000000002'),('سعيد عبدالله','1004',$2,'a0000000-0000-0000-0000-000000000003'),('مصطفى إبراهيم','1005',$2,'a0000000-0000-0000-0000-000000000004'),('ناصر أحمد','1006',$1,'a0000000-0000-0000-0000-000000000002'),('عبدالرحمن صالح','1007',$1,'a0000000-0000-0000-0000-000000000001'),('طارق محمود','1008',$3,'a0000000-0000-0000-0000-000000000005'),('ياسر كمال','1009',$1,'a0000000-0000-0000-0000-000000000003'),('باسم سليمان','1010',$2,'a0000000-0000-0000-0000-000000000001')", [rankIds[0], rankIds[1], rankIds[2]]);
-    await db.query("INSERT INTO fitness_exercises (name,unit,higher_is_better,pass_mark) VALUES ('العدو 100 متر','ثانية',false,14),('العدو 3000 متر','دقيقة',false,14),('الضغط','عدة',true,40),('الجلوس','عدة',true,40),('السباحة 50 متر','ثانية',false,60),('العقبة العسكرية','دقيقة',false,5)");
-    await db.query("INSERT INTO exams (id,title,type,weapon_id) VALUES ('e0000000-0000-0000-0000-000000000001','تقييم رماية G3','weapon','a0000000-0000-0000-0000-000000000001'),('e0000000-0000-0000-0000-000000000002','تقييم رماية M16','weapon','a0000000-0000-0000-0000-000000000002'),('e0000000-0000-0000-0000-000000000003','لياقة بدنية عامة','general',NULL),('e0000000-0000-0000-0000-000000000004','تقييم نظري شامل','general',NULL),('e0000000-0000-0000-0000-000000000005','مهارات قتالية','weapon','a0000000-0000-0000-0000-000000000003')");
-    await db.query("INSERT INTO exam_items (id,exam_id,text,max_score,sort_order) VALUES ('f0000000-0000-0000-0001-000000000001','e0000000-0000-0000-0000-000000000001','دقة التصويب',40,1),('f0000000-0000-0000-0001-000000000002','e0000000-0000-0000-0000-000000000001','سرعة التعامل',30,2),('f0000000-0000-0000-0001-000000000003','e0000000-0000-0000-0000-000000000001','إجراءات الأمان',30,3),('f0000000-0000-0000-0002-000000000001','e0000000-0000-0000-0000-000000000003','العدو 100 متر',25,1),('f0000000-0000-0000-0002-000000000002','e0000000-0000-0000-0000-000000000003','الضغط',25,2),('f0000000-0000-0000-0002-000000000003','e0000000-0000-0000-0000-000000000003','الجلوس',25,3),('f0000000-0000-0000-0002-000000000004','e0000000-0000-0000-0000-000000000003','العدو 3000 متر',25,4)");
-    const soldiers = await db.query('SELECT id FROM soldiers');
-    const sids = soldiers.rows.map(r => r.id);
-    const examIds = ['e0000000-0000-0000-0000-000000000001','e0000000-0000-0000-0000-000000000003','e0000000-0000-0000-0000-000000000004'];
-    const itemSets = [
-      { examId: examIds[0], items: ['f0000000-0000-0000-0001-000000000001','f0000000-0000-0000-0001-000000000002','f0000000-0000-0000-0001-000000000003'], max: [40,30,30] },
-      { examId: examIds[1], items: ['f0000000-0000-0000-0002-000000000001','f0000000-0000-0000-0002-000000000002','f0000000-0000-0000-0002-000000000003','f0000000-0000-0000-0002-000000000004'], max: [25,25,25,25] },
-      { examId: examIds[2], items: [], max: [] },
-    ];
-    for (let i = 0; i < 5 && i < sids.length; i++) {
-      for (const es of itemSets) {
-        const totalMax = es.max.reduce((a,b) => a+b, 0) || 100;
-        const scores = es.max.map(m => Math.round(Math.random() * m * 0.7 + m * 0.3));
-        const totalScore = Math.round((scores.reduce((a,b) => a+b, 0) / totalMax) * 100 * 100) / 100;
-        const result = await db.query('INSERT INTO results (exam_id, soldier_id, result_type, total_score, exam_date, entered_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id', [es.examId, sids[i], 'exam', totalScore, '2026-05-15', req.user.id]);
-        for (let j = 0; j < es.items.length; j++) {
-          if (es.items[j]) await db.query('INSERT INTO result_item_scores (result_id, item_id, score_value) VALUES ($1,$2,$3)', [result.rows[0].id, es.items[j], scores[j]]);
-        }
-      }
-    }
-    await db.query("INSERT INTO announcements (title, body, priority, created_by) VALUES ('بدء دورة الرماية','سيبدأ التسجيل في دورة الرماية المتقدمة الأسبوع القادم','urgent',$1),('تحديث جداول التقييم','تم تحديث جداول التقييم الشهري للفترة القادمة','info',$1),('تهنئة','نبارك للأفراد المتميزين في تقييم هذا الشهر','normal',$1)", [req.user.id]);
-    res.json({ message: 'تم تعبئة البيانات بنجاح', seeded: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'حدث خطأ غير متوقع' });
