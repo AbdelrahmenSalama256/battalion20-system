@@ -116,7 +116,7 @@ CREATE TABLE announcements (
 -- Seed: admin (password = 1234)
 INSERT INTO users (name, username, password_hash, role)
 VALUES ('القائد','commander',
-  '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lFEC',
+  '$2a$10$.0G9qD/IV4fNuVv9firbVuN7yIq3XZ3IOX5NvDaby4LiWaLaJzLpi',
   'commander');
 
 -- Seed: rank types
