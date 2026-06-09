@@ -13,6 +13,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
   ...(isProd ? { ssl: { rejectUnauthorized: false } } : {}),
+
 });
 const db = { query: (text, params) => pool.query(text, params), pool };
 pool.query('SELECT 1').then(() => console.log('DB connected')).catch(e => console.error('DB fail:', e.message));
@@ -39,11 +40,6 @@ app.use(cors({ origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'ht
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
-app.get('/api/debug', (req, res) => res.json({
-  env: { NODE_ENV: process.env.NODE_ENV, HAS_DB: !!process.env.DATABASE_URL, HAS_JWT: !!process.env.JWT_SECRET, HAS_FRONTEND: !!process.env.FRONTEND_URL },
-  isProd,
-  dbUrl: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) + '...' : 'NOT SET'
-}));
 
 const er = express.Router();
 er.post('/login', async (req, res) => {
@@ -56,7 +52,7 @@ er.post('/login', async (req, res) => {
     if (!(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'اسم مستخدم أو كلمة مرور غير صحيحة' });
     const token = jwt.sign({ id: user.id, name: user.name, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, name: user.name, username: user.username, role: user.role } });
-  } catch (e) { res.status(500).json({ error: 'DB: ' + e.message }); }
+  } catch (e) { res.status(500).json({ error: 'حدث خطأ في الخادم: ' + e.message }); }
 });
 er.get('/me', auth, async (req, res) => {
   try {
@@ -518,7 +514,7 @@ app.use('/api/ai', ai);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: err.message || 'حدث خطأ غير متوقع', stack: err.stack?.split('\n')[0] });
+  res.status(500).json({ error: 'حدث خطأ غير متوقع' });
 });
 
 exports.handler = serverless(app);
