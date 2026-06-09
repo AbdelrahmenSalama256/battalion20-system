@@ -38,15 +38,7 @@ app.use(helmet());
 app.use(cors({ origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5173', 'http://localhost:3000'], credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
-app.get('/api/health', async (req, res) => {
-  let dbOk = false, dbErr = '';
-  try { await db.query('SELECT 1'); dbOk = true; } catch (e) { dbErr = e.message?.substring(0, 100); }
-  res.json({
-    ok: true, time: new Date().toISOString(),
-    db: process.env.DATABASE_URL ? (process.env.DATABASE_URL.includes('pooler') ? 'pooler' : 'direct') : 'NOT SET',
-    dbOk, dbErr
-  });
-});
+app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 const er = express.Router();
 er.post('/login', async (req, res) => {
@@ -345,7 +337,15 @@ rs.get('/stats', auth, async (req, res) => {
     const byWeapon = await db.query('SELECT w.name weapon_name, w.icon weapon_icon, COUNT(r.id)::int count, ROUND(AVG(r.total_score), 1) avg, COALESCE(ROUND(COUNT(CASE WHEN r.total_score >= 50 THEN 1 END) * 100.0 / NULLIF(COUNT(r.id), 0), 1), 0) pass_rate FROM weapons w LEFT JOIN soldiers s ON s.weapon_id=w.id LEFT JOIN results r ON r.soldier_id=s.id GROUP BY w.id,w.name,w.icon ORDER BY count DESC');
     const distribution = await db.query('SELECT COUNT(CASE WHEN total_score >= 90 THEN 1 END)::int excellent, COUNT(CASE WHEN total_score >= 75 AND total_score < 90 THEN 1 END)::int very_good, COUNT(CASE WHEN total_score >= 65 AND total_score < 75 THEN 1 END)::int good, COUNT(CASE WHEN total_score >= 50 AND total_score < 65 THEN 1 END)::int acceptable, COUNT(CASE WHEN total_score < 50 THEN 1 END)::int fail FROM results');
     const recent = await db.query('SELECT r.*, s.name soldier_name, s.military_id, e.title exam_title FROM results r JOIN soldiers s ON s.id=r.soldier_id LEFT JOIN exams e ON e.id=r.exam_id ORDER BY r.created_at DESC LIMIT 8');
-    res.json({ ...counts.rows[0], byWeapon: byWeapon.rows, distribution: distribution.rows[0], recentResults: recent.rows });
+    const c = counts.rows[0];
+    const d = distribution.rows[0];
+    res.json({
+      totalSoldiers: c.total_soldiers, totalResults: c.total_results,
+      avgScore: c.avg_score, passRate: c.pass_rate,
+      byWeapon: byWeapon.rows,
+      distribution: { excellent: d.excellent, veryGood: d.very_good, good: d.good, acceptable: d.acceptable, fail: d.fail },
+      recentResults: recent.rows,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 rs.get('/:id', auth, async (req, res) => {
