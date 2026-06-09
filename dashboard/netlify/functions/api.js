@@ -45,6 +45,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+app.get('/api', (req, res) => res.json({ ok: true, name: 'Battalion 20 API', version: '2.0.0' }));
 
 const er = express.Router();
 er.post('/login', async (req, res) => {
