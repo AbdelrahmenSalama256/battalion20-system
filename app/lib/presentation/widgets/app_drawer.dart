@@ -2,10 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/network/api_service.dart';
+import '../../data/repositories/api_repository.dart';
 import '../cubits/auth/auth_cubit.dart';
+import '../screens/profile/profile_screen.dart';
+import '../screens/users/users_screen.dart';
+import '../widgets/toast_helper.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
+
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnread();
+  }
+
+  void _loadUnread() async {
+    try {
+      final repo = ApiRepository(context.read<ApiService>());
+      final count = await repo.getUnreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {}
+  }
+
+  void _navigate(Widget screen) {
+    Navigator.of(context).pop();
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +47,11 @@ class AppDrawer extends StatelessWidget {
         builder: (ctx, state) {
           if (state is! AuthAuthenticated) return const SizedBox();
           final user = state.user;
+          final isCommander = user.role == 'commander';
           return Column(
             children: [
               Container(
-                padding: EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 24.h),
+                padding: EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 20.h),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: const Color(AC.cardBorder), width: 0.5)),
                 ),
@@ -40,23 +72,48 @@ class AppDrawer extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Text(
-                        user.role == 'commander' ? 'قائد' : user.role == 'officer' ? 'ضابط' : 'ضابط صف',
+                        user.roleLabel,
                         style: TextStyle(fontSize: 12.sp, color: const Color(AC.gold), fontWeight: FontWeight.w600),
                       ),
                     ),
+                    if (user.rankName != null) ...[
+                      SizedBox(height: 4.h),
+                      Text(user.rankName!, style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary))),
+                    ],
                   ],
                 ),
               ),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: ListView(
+                  padding: EdgeInsets.only(top: 8.h),
                   children: [
-                    Icon(Icons.info_outline, size: 48.r, color: const Color(AC.textSecondary)),
-                    SizedBox(height: 8.h),
-                    Text('كتيبة 20', style: TextStyle(fontSize: 16.sp, color: const Color(AC.textSecondary))),
-                    Text('نظام التقييم العسكري', style: TextStyle(fontSize: 12.sp, color: const Color(AC.textSecondary).withOpacity(0.6))),
-                    SizedBox(height: 4.h),
-                    Text('الإصدار 2.0.0', style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary).withOpacity(0.4))),
+                    _drawerItem(Icons.person_outline, 'حسابي', () => _navigate(const ProfileScreen())),
+                    _drawerItem(Icons.notifications_outlined, 'الإشعارات', () {
+                      _loadUnread();
+                      showToast(context, 'قريباً', isError: true);
+                    }, badge: _unreadCount),
+                    if (isCommander)
+                      _drawerItem(Icons.people_outline, 'المستخدمين', () => _navigate(const UsersScreen())),
+                    Divider(color: const Color(AC.cardBorder), height: 24.h),
+                    _drawerItem(Icons.info_outline, 'حول التطبيق', () {
+                      Navigator.of(context).pop();
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(AC.card),
+                          title: Text('🛡️ كتيبة 20', style: TextStyle(color: const Color(AC.gold), fontSize: 18.sp)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('نظام التقييم العسكري', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textSecondary))),
+                              SizedBox(height: 8.h),
+                              Text('الإصدار 2.0.0', style: TextStyle(fontSize: 12.sp, color: const Color(AC.textSecondary).withOpacity(0.6))),
+                            ],
+                          ),
+                          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً'))],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -90,6 +147,24 @@ class AppDrawer extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String label, VoidCallback onTap, {int badge = 0}) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(AC.gold), size: 22.r),
+      title: Text(label, style: TextStyle(fontSize: 14.sp, color: const Color(AC.textPrimary))),
+      trailing: badge > 0
+          ? Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+              decoration: BoxDecoration(
+                color: const Color(AC.danger),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Text('$badge', style: TextStyle(fontSize: 11.sp, color: Colors.white, fontWeight: FontWeight.bold)),
+            )
+          : null,
+      onTap: onTap,
     );
   }
 }

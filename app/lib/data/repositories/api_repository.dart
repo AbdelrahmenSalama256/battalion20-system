@@ -159,4 +159,80 @@ class ApiRepository {
       'newPassword': newPassword,
     });
   }
+
+  // Notifications
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    final res = await _api.get('/notifications');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _api.patch('/notifications/$id/read');
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _api.patch('/notifications/read-all');
+  }
+
+  Future<int> getUnreadCount() async {
+    final res = await _api.get('/notifications/unread-count');
+    return (res.data['count'] as num).toInt();
+  }
+
+  // Users
+  Future<List<UserModel>> getUsers() async {
+    final res = await _api.get('/users');
+    return (res.data as List).map((e) => UserModel.fromJson(e)).toList();
+  }
+
+  Future<void> createUser(Map<String, dynamic> data) async {
+    await _api.post('/users', data: data);
+  }
+
+  Future<void> updateUserPassword(String id, String password) async {
+    await _api.patch('/users/$id/password', data: {'password': password});
+  }
+
+  Future<void> toggleUser(String id) async {
+    await _api.patch('/users/$id/toggle');
+  }
+
+  Future<void> deleteUser(String id) async {
+    await _api.delete('/users/$id');
+  }
+
+  Future<void> updateUserPermissions(String id, Map<String, dynamic> permissions) async {
+    await _api.patch('/users/$id/permissions', data: {'permissions': permissions});
+  }
+
+  // Distinctions
+  Future<void> distinguishSoldier(String id, String badge, String citation) async {
+    await _api.post('/soldiers/$id/distinguish', data: {'badge': badge, 'citation': citation});
+  }
+
+  Future<void> removeDistinction(String id) async {
+    await _api.delete('/soldiers/$id/distinguish');
+  }
+
+  // Profile update
+  Future<void> updateProfile(String id, Map<String, dynamic> data) async {
+    await _api.put('/soldiers/$id', data: data);
+  }
+
+  // Weapons / Specialties management
+  Future<void> createWeapon(Map<String, dynamic> data) async {
+    await _api.post('/weapons', data: data);
+  }
+
+  Future<void> deleteWeapon(String id) async {
+    await _api.delete('/weapons/$id');
+  }
+
+  Future<void> createSpecialty(Map<String, dynamic> data) async {
+    await _api.post('/specialties', data: data);
+  }
+
+  Future<void> deleteSpecialty(String id) async {
+    await _api.delete('/specialties/$id');
+  }
 }

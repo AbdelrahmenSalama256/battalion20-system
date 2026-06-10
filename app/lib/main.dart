@@ -7,6 +7,7 @@ import 'core/network/api_service.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/cubits/auth/auth_cubit.dart';
 import 'presentation/cubits/dashboard/dashboard_cubit.dart';
+import 'presentation/cubits/users/users_cubit.dart';
 import 'presentation/screens/login/login_screen.dart';
 import 'presentation/screens/dashboard/dashboard_screen.dart';
 
@@ -34,6 +35,7 @@ class BattalionApp extends StatelessWidget {
           providers: [
             BlocProvider(create: (_) => AuthCubit(_api)..checkAuth()),
             BlocProvider(create: (_) => DashboardCubit(_api)),
+            BlocProvider(create: (_) => UsersCubit(_api)),
           ],
           child: MaterialApp(
             title: AC.appName,

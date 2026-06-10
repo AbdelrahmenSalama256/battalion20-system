@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -12,8 +13,10 @@ import '../../cubits/announcements/announcements_cubit.dart';
 import '../../cubits/settings/settings_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
+import '../../../data/repositories/api_repository.dart';
 import '../../../data/models/dashboard_stats_model.dart';
 import '../../widgets/score_badge.dart';
+import '../../widgets/toast_helper.dart';
 import '../../widgets/app_drawer.dart';
 import '../soldiers/soldiers_screen.dart';
 import '../exams/exams_screen.dart';
@@ -31,6 +34,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  Timer? _notifTimer;
+  int _prevNotifCount = 0;
 
   final _tabs = [
     _TabItem('الرئيسية', Icons.dashboard_outlined, Icons.dashboard),
@@ -46,6 +51,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     context.read<DashboardCubit>().loadStats();
+    _startNotifPolling();
+  }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startNotifPolling() {
+    _notifTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      if (!mounted) return;
+      try {
+        final repo = ApiRepository(context.read<ApiService>());
+        final notifs = await repo.getNotifications();
+        if (notifs.length > _prevNotifCount && _prevNotifCount > 0) {
+          final latest = notifs.first;
+          final msg = latest['message'] ?? 'لديك إشعار جديد';
+          if (mounted) {
+            showToast(context, '🔔 $msg', isSuccess: true);
+            // Deep link: if notification has evaluated_id, ask to navigate
+            if (latest['evaluated_id'] != null) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('🔔 $msg', style: TextStyle(fontSize: 14.sp)),
+                  backgroundColor: const Color(AC.gold),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                  action: SnackBarAction(
+                    label: 'عرض',
+                    textColor: Colors.black,
+                    onPressed: () => setState(() => _currentIndex = 1),
+                  ),
+                ),
+              );
+            }
+          }
+        }
+        _prevNotifCount = notifs.length;
+      } catch (_) {}
+    });
   }
 
   @override
