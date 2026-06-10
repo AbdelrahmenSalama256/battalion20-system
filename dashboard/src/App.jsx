@@ -1,4 +1,4 @@
-import React,{useState,useEffect,useCallback} from 'react';
+import React,{useState,useEffect,useCallback,useMemo} from 'react';
 import {api} from './api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles.css';
@@ -74,11 +74,70 @@ export default function App(){
 
   const unread=data.notifications.filter(n=>!n.is_read).length;
 
+  const[sbOpen,setSbOpen]=useState(false);
+  const ALL_TABS=[
+    {id:'dashboard',label:'الرئيسية',icon:'📊'},
+    {id:'soldiers',label:'الأفراد',icon:'👥'},
+    {id:'exams',label:'الامتحانات',icon:'📝'},
+    {id:'results',label:'النتائج',icon:'🏆'},
+    {id:'notifications',label:'الإشعارات',icon:'🔔'},
+    {id:'announcements',label:'الإعلانات',icon:'📢'},
+    {id:'users',label:'المستخدمين',icon:'👤'},
+    {id:'settings',label:'الإعدادات',icon:'⚙️'},
+    {id:'profile',label:'حسابي',icon:'👤'},
+  ];
+  const navTabs=useMemo(()=>{
+    let tabs;
+    if(!u||u.role==='commander')tabs=ALL_TABS;
+    else{const allowed=u.permissions?.pages;if(!allowed||!allowed.length)tabs=ALL_TABS.filter(t=>!['users','settings'].includes(t.id));else tabs=ALL_TABS.filter(t=>allowed.includes(t.id))}
+    return tabs.map(t=>t.id==='notifications'?{...t,badge:unread}:t);
+  },[u,unread]);
+
   if(page==='login') return <LoginPage onLogin={handleLogin}/>;
 
   return(
-    <div className="d-flex vh-100">
-      <Sidebar tab={tab} onTab={setTab} user={u} onLogout={handleLogout} unread={unread} onNotif={()=>setNotifOpen(o=>!o)}/>
+    <div className="d-flex app-layout">
+      {/* Desktop sidebar - always visible on md+ */}
+      <div className="d-none d-md-flex flex-column border-start border-military" style={{width:220,flexShrink:0,background:'var(--military-card)'}}>
+        <div className="text-center p-3 border-bottom border-military">
+          <div className="fs-2">🛡️</div>
+          <h6 className="text-gold mb-1">كتيبة 20</h6>
+          <div className="small text-muted-military">{u?.name}</div>
+          <button className="bell-btn mt-2" onClick={()=>setNotifOpen(o=>!o)}>🔔{unread>0&&<span className="bell-badge">{unread}</span>}</button>
+        </div>
+        <nav className="flex-grow-1 py-2 overflow-auto">
+          {navTabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`sidebar-btn d-flex align-items-center gap-2 w-100 border-0 py-2 px-3 text-muted-military small ${tab===t.id?'active':''}`} style={{background:'none',textAlign:'right'}}>
+            <span className="fs-6" style={{width:24,textAlign:'center'}}>{t.icon}</span>
+            <span className="flex-grow-1">{t.label}</span>
+            {t.badge>0&&<span className="badge bg-danger rounded-pill" style={{fontSize:'0.6rem'}}>{t.badge}</span>}</button>)}
+        </nav>
+        <button onClick={handleLogout} className="sidebar-btn d-flex align-items-center gap-2 w-100 border-0 border-top border-military py-2 px-3 text-muted-military small" style={{background:'none',textAlign:'right'}}>
+          <span className="fs-6" style={{width:24,textAlign:'center'}}>🚪</span><span>تسجيل الخروج</span>
+        </button>
+      </div>
+
+      {/* Mobile offcanvas sidebar */}
+      <div className={`offcanvas offcanvas-start d-md-none ${sbOpen?'show':''}`} style={{width:280,background:'var(--military-card)'}} tabIndex="-1">
+        <div className="offcanvas-header border-bottom border-military">
+          <h6 className="text-gold mb-0">🛡️ كتيبة 20</h6>
+          <button type="button" className="btn-close btn-close-white" onClick={()=>setSbOpen(false)}></button>
+        </div>
+        <div className="offcanvas-body p-0 d-flex flex-column">
+          <div className="small text-muted-military text-center py-2 border-bottom border-military">{u?.name}</div>
+          <nav className="flex-grow-1 py-2 overflow-auto">
+            {navTabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setSbOpen(false)}} className={`sidebar-btn d-flex align-items-center gap-2 w-100 border-0 py-2 px-3 text-muted-military small ${tab===t.id?'active':''}`} style={{background:'none',textAlign:'right'}}>
+              <span className="fs-6" style={{width:24,textAlign:'center'}}>{t.icon}</span>
+              <span className="flex-grow-1">{t.label}</span>
+              {t.badge>0&&<span className="badge bg-danger rounded-pill" style={{fontSize:'0.6rem'}}>{t.badge}</span>}</button>)}
+          </nav>
+          <button onClick={()=>{handleLogout();setSbOpen(false)}} className="sidebar-btn d-flex align-items-center gap-2 w-100 border-0 border-top border-military py-2 px-3 text-muted-military small" style={{background:'none',textAlign:'right'}}>
+            <span className="fs-6" style={{width:24,textAlign:'center'}}>🚪</span><span>تسجيل الخروج</span>
+          </button>
+        </div>
+      </div>
+      {sbOpen&&<div className="offcanvas-backdrop fade show d-md-none" onClick={()=>setSbOpen(false)}/>}
+
+      {/* Notifications offcanvas */}
       <div className={`offcanvas offcanvas-start ${notifOpen?'show':''}`} style={{width:340,background:'var(--military-card)'}}>
         <div className="offcanvas-header border-bottom border-military">
           <h5 className="text-gold mb-0">الإشعارات</h5>
@@ -106,22 +165,38 @@ export default function App(){
           </div>)}
         </div>
       </div>
-      <div className="flex-grow-1 overflow-auto p-3" style={{marginRight:220}}>
-        {tab==='dashboard'&&<DashboardPage stats={data.stats} loading={loading} soldiers={data.soldiers} onRefresh={load}
-          onDistinguish={s=>setDistinguishModal(s)} onSoldierClick={s=>setSelectedSoldier(s)}/>}
-        {tab==='soldiers'&&<SoldiersPage soldiers={data.soldiers} weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}
-          onDistinguish={s=>setDistinguishModal(s)} onSoldierClick={s=>setSelectedSoldier(s)}/>}
-        {tab==='exams'&&<ExamsPage exams={data.exams} weapons={data.weapons} onRefresh={load} user={u}/>}
-        {tab==='results'&&<ResultsPage results={data.results} soldiers={data.soldiers} exams={data.exams} onRefresh={load} user={u}
-          onSoldierClick={s=>{const found=data.soldiers.find(x=>x.id===s);if(found)setSelectedSoldier(found)}}/>}
-        {tab==='notifications'&&<NotificationPage notifications={data.notifications} onMarkRead={markRead} onMarkAll={markAllRead}
-          onSoldierClick={id=>{const s=data.soldiers.find(x=>x.id===id);if(s)setSelectedSoldier(s)}}/>}
-        {tab==='announcements'&&<AnnouncementsPage announcements={data.announcements} onRefresh={load} user={u}/>}
-        {tab==='users'&&<UsersPage users={data.users} ranks={data.ranks} onRefresh={load} user={u}/>}
-        {tab==='settings'&&<SettingsPage weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}/>}
+
+      {/* Main content area - fills remaining height */}
+      <div className="d-flex flex-column flex-grow-1 overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="d-md-none d-flex align-items-center p-2 border-bottom border-military bg-card gap-2">
+          <button className="btn btn-sm btn-outline-gold" onClick={()=>setSbOpen(true)}>☰</button>
+          <div className="flex-grow-1 text-center"><span className="text-gold small fw-bold">🛡️ كتيبة 20</span></div>
+          <button className="bell-btn" onClick={()=>setNotifOpen(o=>!o)}>🔔{unread>0&&<span className="bell-badge">{unread}</span>}</button>
+        </div>
+        {/* Scrollable content fills remaining space */}
+        <div className="flex-grow-1 overflow-auto p-3">
+          {tab==='dashboard'&&<DashboardPage stats={data.stats} loading={loading} soldiers={data.soldiers} onRefresh={load}
+            onDistinguish={s=>setDistinguishModal(s)} onSoldierClick={s=>setSelectedSoldier(s)}/>}
+          {tab==='soldiers'&&<SoldiersPage soldiers={data.soldiers} weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}
+            onDistinguish={s=>setDistinguishModal(s)} onSoldierClick={s=>setSelectedSoldier(s)}/>}
+          {tab==='exams'&&<ExamsPage exams={data.exams} weapons={data.weapons} onRefresh={load} user={u}/>}
+          {tab==='results'&&<ResultsPage results={data.results} soldiers={data.soldiers} exams={data.exams} onRefresh={load} user={u}
+            onSoldierClick={s=>{const found=data.soldiers.find(x=>x.id===s);if(found)setSelectedSoldier(found)}}/>}
+          {tab==='notifications'&&<NotificationPage notifications={data.notifications} onMarkRead={markRead} onMarkAll={markAllRead}
+            onSoldierClick={id=>{const s=data.soldiers.find(x=>x.id===id);if(s)setSelectedSoldier(s)}}/>}
+          {tab==='announcements'&&<AnnouncementsPage announcements={data.announcements} onRefresh={load} user={u}/>}
+          {tab==='users'&&<UsersPage users={data.users} ranks={data.ranks} onRefresh={load} user={u}/>}
+          {tab==='settings'&&<SettingsPage weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}/>}
+          {tab==='profile'&&<ProfilePage user={u}/>}
+        </div>
       </div>
-      {selectedSoldier&&<SoldierProfile soldier={selectedSoldier} onClose={()=>setSelectedSoldier(null)} onDistinguish={s=>{setDistinguishModal(s);setSelectedSoldier(null)}} onRemoveDistinction={removeDistinction} user={u} ranks={data.ranks} weapons={data.weapons} specialties={data.specialties}/>}
-      {distinguishModal&&<DistinguishModal soldier={distinguishModal} onClose={()=>setDistinguishModal(null)} onConfirm={handleDistinguish}/>}
+
+      {selectedSoldier&&<SoldierProfile soldier={selectedSoldier} onClose={()=>setSelectedSoldier(null)}
+        onDistinguish={s=>{setSelectedSoldier(null);setDistinguishModal(s)}}
+        onRemoveDistinction={async id=>{try{await api.removeDistinction(id);setSelectedSoldier(null);load()}catch(e){alert(e.message)}}} user={u}/>}
+      {distinguishModal&&<DistinguishModal soldier={distinguishModal} onClose={()=>setDistinguishModal(null)}
+        onConfirm={async(id,badge,citation)=>{try{await api.distinguishSoldier(id,badge,citation);setDistinguishModal(null);load()}catch(e){alert(e.message)}}}/>}
     </div>
   );
 }
@@ -139,43 +214,6 @@ function LoginPage({onLogin}){
       </form>
     </div>
   </div>);
-}
-
-function Sidebar({tab,onTab,user,onLogout,unread,onNotif}){
-  const[open,setOpen]=useState(false);
-  const items=[
-    {id:'dashboard',label:'الرئيسية',icon:'📊'},
-    {id:'soldiers',label:'الأفراد',icon:'👥'},
-    {id:'exams',label:'الامتحانات',icon:'📝'},
-    {id:'results',label:'النتائج',icon:'🏆'},
-    {id:'notifications',label:'الإشعارات',icon:'🔔',badge:unread},
-    {id:'announcements',label:'الإعلانات',icon:'📢'},
-    {id:'users',label:'المستخدمين',icon:'👤'},
-    {id:'settings',label:'الإعدادات',icon:'⚙️'},
-  ];
-  return(<>
-    <button className="d-md-none btn btn-outline-gold position-fixed" style={{top:10,right:10,zIndex:1020}} onClick={()=>setOpen(o=>!o)}>☰</button>
-    <div className={`position-fixed vh-100 border-start border-military d-flex flex-column ${open?'d-block':'d-none d-md-flex'}`} style={{width:220,right:0,top:0,zIndex:1010,background:'var(--military-card)'}}>
-      <div className="text-center p-3 border-bottom border-military">
-        <div className="fs-2">🛡️</div>
-        <h6 className="text-gold mb-1">كتيبة 20</h6>
-        <div className="small text-muted-military">{user?.name}</div>
-        <button className="bell-btn mt-2" onClick={onNotif}>🔔{unread>0&&<span className="bell-badge">{unread}</span>}</button>
-      </div>
-      <nav className="flex-grow-1 py-2">
-        {items.map(t=><button key={t.id} onClick={()=>{onTab(t.id);setOpen(false)}} className={`sidebar-btn d-flex align-items-center gap-2 w-100 border-0 py-2 px-3 text-muted-military small ${tab===t.id?'active':''}`} style={{background:'none',textAlign:'right'}}>
-          <span className="fs-6" style={{width:24,textAlign:'center'}}>{t.icon}</span>
-          <span className="flex-grow-1">{t.label}</span>
-          {t.badge>0&&<span className="badge bg-danger rounded-pill" style={{fontSize:'0.6rem'}}>{t.badge}</span>}
-        </button>)}
-      </nav>
-      <button onClick={onLogout} className="sidebar-btn d-flex align-items-center gap-2 w-100 border-0 border-top border-military py-2 px-3 text-muted-military small" style={{background:'none',textAlign:'right'}}>
-        <span className="fs-6" style={{width:24,textAlign:'center'}}>🚪</span>
-        <span>تسجيل الخروج</span>
-      </button>
-    </div>
-    {open&&<div className="d-md-none position-fixed" style={{inset:0,zIndex:1009,background:'rgba(0,0,0,0.5)'}} onClick={()=>setOpen(false)}/>}
-  </>);
 }
 
 function DashboardPage({stats,loading,soldiers,onRefresh,onDistinguish,onSoldierClick}){
@@ -390,7 +428,7 @@ function AnnouncementsPage({announcements,onRefresh,user}){
   const pc={urgent:'#E63946',info:'#2D6A4F',normal:'#9CAF88'};
   const pl={urgent:'عاجل',info:'معلومات',normal:'عادي'};
   return(<div>
-    <div className="d-flex justify-content-between align-items-center mb-3"><h4 className="text-gold mb-0">الإعلانات</h4>{user?.role==='commander'&&<button onClick={()=>setShowForm(true)} className="btn btn-gold btn-sm">+ إعلان جديد</button>}</div>
+    <div className="d-flex justify-content-between align-items-center mb-3"><h4 className="text-gold mb-0">الإعلانات</h4>{(user?.role==='commander'||user?.role==='officer')&&<button onClick={()=>setShowForm(true)} className="btn btn-gold btn-sm">+ إعلان جديد</button>}</div>
     {announcements.map(a=><div key={a.id} className="card border-military p-3 mb-2"><div className="d-flex align-items-center gap-2 mb-1"><span className="badge" style={{background:`${pc[a.priority]}30`,color:pc[a.priority]}}>{pl[a.priority]}</span><span className="small fw-bold">{a.title}</span></div>{a.body&&<p className="small text-muted-military mb-1">{a.body}</p>}<div className="small text-muted-military" style={{fontSize:'0.65rem'}}>{a.created_by_name} • {a.created_at?.substring(0,10)}</div></div>)}
     {showForm&&<AnnouncementForm onClose={()=>{setShowForm(false);onRefresh()}}/>}
   </div>);
@@ -446,6 +484,10 @@ function SettingsPage({weapons,specialties,ranks,rankTypes,onRefresh,user}){
     {stab==='weapons'&&<WeaponsSettings weapons={weapons} onRefresh={onRefresh} user={user}/>}
     {stab==='specialties'&&<SpecialtiesSettings specialties={specialties} weapons={weapons} onRefresh={onRefresh} user={user}/>}
     {stab==='ranks'&&<RanksSettings ranks={ranks} rankTypes={rankTypes} onRefresh={onRefresh} user={user}/>}
+    {user?.role==='commander'&&<div className="mt-4 p-3" style={{borderTop:'1px solid var(--military-border)'}}>
+      <button className="btn btn-outline-gold btn-sm" onClick={async()=>{try{await api.seedDemoData();alert('✅ تم إضافة البيانات التجريبية');onRefresh()}catch(e){alert(e.message)}}}>🌱 إضافة بيانات تجريبية</button>
+      <p className="text-muted-military small mt-1 mb-0">يضيف أسلحة وتخصصات ورتب وجندي وامتحان تجريبي</p>
+    </div>}
   </div>);
 }
 function WeaponsSettings({weapons,onRefresh,user}){
@@ -509,22 +551,67 @@ function UsersPage({users,ranks,onRefresh,user}){
     {showForm&&<UserForm ranks={ranks} onClose={()=>{setShowForm(false);onRefresh()}}/>}
   </div>);
 }
+const ROLE_LABELS={commander:'قائد',officer:'ضابط',nco:'صف ضابط'};
+const PERMISSIONS={
+  commander:{label:'صلاحية كاملة',color:'var(--military-gold-bright)',perms:[
+    {action:'إدارة المستخدمين',allowed:true},{action:'إدارة الأسلحة والتخصصات',allowed:true},{action:'حذف أي بيانات',allowed:true},
+    {action:'منح الأوسمة',allowed:true},{action:'إضافة/تعديل أفراد',allowed:true},{action:'إضافة نتائج',allowed:true},
+    {action:'إنشاء امتحانات',allowed:true},{action:'إعلانات',allowed:true},{action:'مشاهدة الإشعارات',allowed:true},
+  ]},
+  officer:{label:'صلاحية ضابط',color:'#2D6A4F',perms:[
+    {action:'إدارة المستخدمين',allowed:false},{action:'إدارة الأسلحة والتخصصات',allowed:false},{action:'حذف أي بيانات',allowed:false},
+    {action:'منح الأوسمة',allowed:false},{action:'إضافة/تعديل أفراد',allowed:true},{action:'إضافة نتائج',allowed:true},
+    {action:'إنشاء امتحانات',allowed:true},{action:'إعلانات',allowed:true},{action:'مشاهدة الإشعارات',allowed:true},
+  ]},
+  nco:{label:'صلاحية صف ضابط',color:'#C9A84C',perms:[
+    {action:'إدارة المستخدمين',allowed:false},{action:'إدارة الأسلحة والتخصصات',allowed:false},{action:'حذف أي بيانات',allowed:false},
+    {action:'منح الأوسمة',allowed:false},{action:'إضافة/تعديل أفراد',allowed:false},{action:'إضافة نتائج',allowed:true},
+    {action:'إنشاء امتحانات',allowed:false},{action:'إعلانات',allowed:false},{action:'مشاهدة الإشعارات',allowed:true},
+  ]},
+};
+const PAGE_LABELS={
+  dashboard:'الرئيسية',soldiers:'الأفراد',exams:'الامتحانات',results:'النتائج',
+  notifications:'الإشعارات',announcements:'الإعلانات',users:'المستخدمين',settings:'الإعدادات',profile:'حسابي'
+};
 function UserForm({ranks,onClose}){
   const[name,setName]=useState('');const[username,setUsername]=useState('');const[password,setPassword]=useState('');
   const[role,setRole]=useState('officer');const[rankId,setRankId]=useState('');
-  async function save(){if(!name||!username||!password)return;try{await api.createUser({name,username,password,role,rankId:rankId||null});onClose()}catch(e){alert(e.message)}}
+  const[pages,setPages]=useState(Object.keys(PAGE_LABELS).filter(k=>!['users','settings'].includes(k)));
+  const perm=PERMISSIONS[role];
+  function togglePage(id){setPages(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+  async function save(){if(!name||!username||!password)return;try{await api.createUser({name,username,password,role,rankId:rankId||null,permissions:{pages}});onClose()}catch(e){alert(e.message)}}
   return(<Modal onClose={onClose}><h5 className="text-gold mb-3">إضافة مستخدم</h5>
     <input placeholder="الاسم" value={name} onChange={e=>setName(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
     <input placeholder="اسم المستخدم" value={username} onChange={e=>setUsername(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
     <input type="password" placeholder="كلمة المرور" value={password} onChange={e=>setPassword(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
     <select value={role} onChange={e=>setRole(e.target.value)} className="form-select bg-card text-light border-military mb-2">
-      <option value="commander">قائد</option><option value="officer">ضابط</option><option value="nco">صف ضابط</option>
+      {['commander','officer','nco'].map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
     </select>
-    <select value={rankId} onChange={e=>setRankId(e.target.value)} className="form-select bg-card text-light border-military mb-3">
+    <select value={rankId} onChange={e=>setRankId(e.target.value)} className="form-select bg-card text-light border-military mb-2">
       <option value="">اختر الرتبة (اختياري)</option>{ranks.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
     </select>
+    {/* Page permissions */}
+    <div className="card border-military p-2 mb-2"><h6 className="text-gold small mb-2" style={{fontSize:'0.75rem'}}>📄 الصفحات المسموح بها</h6>
+      <div className="d-flex flex-wrap gap-2">{Object.entries(PAGE_LABELS).filter(([k])=>k!=='profile').map(([k,v])=><label key={k} className="d-flex align-items-center gap-1 small" style={{fontSize:'0.7rem',cursor:'pointer'}}>
+        <input type="checkbox" checked={pages.includes(k)} onChange={()=>togglePage(k)} style={{accentColor:'var(--military-gold-bright)'}}/>{v}</label>)}</div>
+    </div>
+    {/* Role info */}
+    <div className="card border-military p-2 mb-3"><h6 className="text-gold small mb-2" style={{fontSize:'0.75rem'}}>🔒 صلاحية الدور: {perm.label}</h6>
+      <table className="table table-borderless table-sm mb-0"><tbody>
+        {perm.perms.map(p=><tr key={p.action}><td className="small py-1" style={{fontSize:'0.7rem'}}>{p.action}</td><td className="text-start py-1">{p.allowed?<span className="text-success" style={{fontSize:'0.7rem'}}>✅ مسموح</span>:<span className="text-danger" style={{fontSize:'0.7rem'}}>❌ غير مسموح</span>}</td></tr>)}
+      </tbody></table>
+    </div>
     <div className="d-flex gap-2"><button onClick={save} className="btn btn-gold flex-grow-1">إنشاء</button><button onClick={onClose} className="btn btn-outline-secondary flex-grow-1">إلغاء</button></div>
   </Modal>);
+}
+
+function ProfilePage({user}){
+  return(<div className="card border-military p-3" style={{maxWidth:500}}>
+    <h5 className="text-gold mb-3">👤 حسابي</h5>
+    <table className="table table-borderless table-sm mb-0"><tbody>
+      {[{l:'الاسم',v:user?.name},{l:'اسم المستخدم',v:user?.username},{l:'الدور',v:{commander:'قائد',officer:'ضابط',nco:'صف ضابط'}[user?.role]},{l:'الرتبة',v:user?.rank_name||'-'}].map(r=><tr key={r.l}><td className="text-muted-military small py-1" style={{width:120}}>{r.l}</td><td className="small py-1">{r.v}</td></tr>)}
+    </tbody></table>
+  </div>);
 }
 
 function Modal({children,onClose,width}){

@@ -92,6 +92,7 @@ export const api = {
   createUser: (data) => req('POST', '/users', data),
   updateUserPassword: (id, password) => req('PATCH', `/users/${id}/password`, { password }),
   toggleUser: (id) => req('PATCH', `/users/${id}/toggle`),
+  updateUserPermissions: (id,permissions) => req('PATCH', `/users/${id}/permissions`, { permissions }),
   deleteUser: (id) => req('DELETE', `/users/${id}`),
 
   // Notifications
@@ -103,4 +104,7 @@ export const api = {
   // Distinctions
   distinguishSoldier: (id, badge, citation) => req('POST', `/soldiers/${id}/distinguish`, { badge, citation }),
   removeDistinction: (id) => req('DELETE', `/soldiers/${id}/distinguish`),
+
+  // Seed demo data
+  seedDemoData: () => req('POST', '/admin/seed'),
 };

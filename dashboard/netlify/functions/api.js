@@ -29,6 +29,7 @@ async function runMigrations(){
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_id UUID");
   try{await pool.query("ALTER TABLE users ADD CONSTRAINT fk_user_rank FOREIGN KEY(rank_id) REFERENCES ranks(id) ON DELETE SET NULL")}catch(e){}
   await pool.query("CREATE TABLE IF NOT EXISTS notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type VARCHAR(50) DEFAULT 'evaluation', message TEXT, evaluator_id UUID REFERENCES users(id) ON DELETE SET NULL, evaluator_name VARCHAR(120), evaluator_rank VARCHAR(80), evaluator_weapon VARCHAR(100), evaluated_id UUID REFERENCES soldiers(id) ON DELETE CASCADE, evaluated_name VARCHAR(150), evaluated_rank VARCHAR(80), evaluated_specialty VARCHAR(100), fitness_score NUMERIC(6,2), specialty_score NUMERIC(6,2), discipline_score NUMERIC(6,2), total_score NUMERIC(6,2), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}'");
   console.log('Migrations done');
 }
 
@@ -82,12 +83,12 @@ er.post('/login',async(req,res)=>{
 });
 er.get('/me',auth,async(req,res)=>{
   try{
-    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.permissions,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
     if(!rows.length) return res.status(404).json({error:'غير موجود'});
     res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
 });
-er.patch('/change-password',auth,async(req,res)=>{
+er.patch('/change-password',auth,commanderOnly,async(req,res)=>{
   try{
     const{oldPassword,newPassword}=req.body;
     if(!oldPassword||!newPassword) return res.status(400).json({error:'يرجى إدخال البيانات'});
@@ -291,6 +292,7 @@ rs.post('/',auth,async(req,res)=>{
   try{
     const{examId,soldierId,fitnessScore,specialtyScore,disciplineScore,totalScore,notes,resultType,examDate}=req.body;
     if(!examId||!soldierId) return res.status(400).json({error:'يرجى إدخال البيانات المطلوبة'});
+    if(!await canEvaluate(req.user.id,soldierId)&&req.user.role!=='commander') return res.status(403).json({error:'لا يمكنك تقييم هذا الفرد'});
     const fs=cn(fitnessScore),ss=cn(specialtyScore),ds=cn(disciplineScore);
     const total=totalScore!=null?cn(totalScore):[fs,ss,ds].every(s=>s!=null)?Math.round((fs+ss+ds)/3*100)/100:null;
     const result=await db.query('INSERT INTO results(exam_id,soldier_id,result_type,total_score,fitness_score,specialty_score,discipline_score,notes,exam_date,entered_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',[examId,soldierId,resultType||'exam',total,fs,ss,ds,notes||null,examDate||new Date().toISOString().split('T')[0],req.user.id]);
@@ -406,15 +408,15 @@ app.use('/api/notifications',nt);
 // USERS
 const us=express.Router();
 us.get('/',auth,commanderOnly,async(req,res)=>{
-  try{const{rows}=await db.query("SELECT id,name,username,role,is_active,created_at,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id ORDER BY u.created_at");res.json(rows)}
+  try{const{rows}=await db.query("SELECT id,name,username,role,is_active,created_at,r.name rank_name,permissions FROM users u LEFT JOIN ranks r ON r.id=u.rank_id ORDER BY u.created_at");res.json(rows)}
   catch(e){res.status(500).json({error:e.message})}
 });
 us.post('/',auth,commanderOnly,async(req,res)=>{
   try{
-    const{name,username,password,role,rankId}=req.body;
+    const{name,username,password,role,rankId,permissions}=req.body;
     if(!name||!username||!password) return res.status(400).json({error:'يرجى إدخال البيانات'});
     const hash=await bcrypt.hash(password,10);
-    await db.query('INSERT INTO users(name,username,password_hash,role,rank_id)VALUES($1,$2,$3,$4,$5)',[name,username,hash,role||'officer',rankId||null]);
+    await db.query('INSERT INTO users(name,username,password_hash,role,rank_id,permissions)VALUES($1,$2,$3,$4,$5,$6)',[name,username,hash,role||'officer',rankId||null,permissions?JSON.stringify(permissions):'{}']);
     res.status(201).json({message:'تم الإنشاء'});
   }catch(e){res.status(500).json({error:e.message})}
 });
@@ -430,11 +432,30 @@ us.patch('/:id/toggle',auth,commanderOnly,async(req,res)=>{
     res.json({isActive:rows[0].is_active,message:rows[0].is_active?'تم التفعيل':'تم التعطيل'});
   }catch(e){res.status(500).json({error:e.message})}
 });
+us.patch('/:id/permissions',auth,commanderOnly,async(req,res)=>{
+  try{const{permissions}=req.body;
+    await db.query('UPDATE users SET permissions=$1 WHERE id=$2',[JSON.stringify(permissions||{}),req.params.id]);
+    res.json({message:'تم التحديث'});
+  }catch(e){res.status(500).json({error:e.message})}
+});
 us.delete('/:id',auth,commanderOnly,async(req,res)=>{
   try{const{rowCount}=await db.query('DELETE FROM users WHERE id=$1',[req.params.id]);if(!rowCount)return res.status(404).json({error:'غير موجود'});res.json({message:'تم الحذف'})}
   catch(e){res.status(500).json({error:e.message})}
 });
 app.use('/api/users',us);
+
+// ADMIN (seed data)
+app.post('/api/admin/seed',auth,commanderOnly,async(req,res)=>{
+  try{
+    await db.query("INSERT INTO weapons(name,icon)VALUES('المشاة','🔫'),('المدرعات','🛡️'),('المدفعية','💣'),('الإشارة','📡'),('المهندسين','🔧') ON CONFLICT DO NOTHING");
+    await db.query("INSERT INTO rank_types(name,color)VALUES('ضباط','#C9A84C'),('صف ضباط','#9CAF88'),('جنود','#2D6A4F') ON CONFLICT DO NOTHING");
+    await db.query("INSERT INTO ranks(name,type_id,sort_order)SELECT 'ملازم',(SELECT id FROM rank_types WHERE name='ضباط' LIMIT 1),1 WHERE EXISTS(SELECT 1 FROM rank_types WHERE name='ضباط')");
+    await db.query("INSERT INTO soldiers(name,military_id,weapon_id,specialty_id)SELECT 'جندي تجريبي','12345',(SELECT id FROM weapons LIMIT 1),(SELECT id FROM specialties LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
+    await db.query("INSERT INTO exams(type,title,weapon_id)SELECT 'لياقة','اختبار تجريبي',(SELECT id FROM weapons LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
+    await db.query("INSERT INTO announcements(title,body,priority,created_by)SELECT 'مرحباً','المنصة جاهزة للعمل','info',(SELECT id FROM users WHERE role='commander' LIMIT 1)");
+    res.json({message:'✅ تم إضافة بيانات تجريبية'});
+  }catch(e){res.status(500).json({error:e.message})}
+});
 
 app.use((err,req,res,next)=>{
   console.error('Unhandled:',err);
