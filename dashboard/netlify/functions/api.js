@@ -448,8 +448,15 @@ app.use('/api/notifications',nt);
 // USERS
 const us=express.Router();
 us.get('/',auth,commanderOnly,async(req,res)=>{
-  try{const{rows}=await db.query("SELECT id,name,username,role,is_active,created_at,r.name rank_name,permissions FROM users u LEFT JOIN ranks r ON r.id=u.rank_id ORDER BY u.created_at");res.json(rows)}
-  catch(e){res.status(500).json({error:e.message})}
+  try{
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.is_active,u.created_at,r.name rank_name,u.permissions FROM users u LEFT JOIN ranks r ON r.id::text=u.rank_id::text ORDER BY u.created_at");
+    res.json(rows);
+  }catch(e){
+    try{
+      const{rows}=await db.query("SELECT id,name,username,role,is_active,created_at FROM users ORDER BY created_at");
+      res.json(rows);
+    }catch(e2){res.status(500).json({error:e2.message})}
+  }
 });
 us.post('/',auth,commanderOnly,async(req,res)=>{
   try{
