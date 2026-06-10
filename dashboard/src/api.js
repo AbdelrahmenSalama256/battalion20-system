@@ -25,6 +25,7 @@ export const api = {
 
   // Rankings
   getRankTypes: () => req('GET', '/ranks/types'),
+  getRanks: (typeId) => req('GET', `/ranks${typeId ? `?typeId=${typeId}` : ''}`),
 
   // Weapons & Specialties
   getWeapons: () => req('GET', '/weapons'),
