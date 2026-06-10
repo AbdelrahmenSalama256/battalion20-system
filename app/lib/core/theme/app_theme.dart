@@ -56,6 +56,63 @@ class AppTheme {
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: const Color(AC.gold)),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(AC.card),
+        selectedItemColor: Color(AC.gold),
+        unselectedItemColor: Color(AC.textSecondary),
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: const Color(AC.card),
+        indicatorColor: Color(AC.gold).withOpacity(0.15),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(color: Color(AC.gold), fontSize: 12, fontWeight: FontWeight.w600);
+          }
+          return const TextStyle(color: Color(AC.textSecondary), fontSize: 11);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: Color(AC.gold), size: 22);
+          }
+          return const IconThemeData(color: Color(AC.textSecondary), size: 22);
+        }),
+        height: 70,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: const Color(AC.gold),
+        inactiveTrackColor: const Color(AC.gold).withOpacity(0.15),
+        thumbColor: const Color(AC.gold),
+        overlayColor: const Color(AC.gold).withOpacity(0.12),
+        trackHeight: 6,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+        valueIndicatorColor: const Color(AC.gold),
+        valueIndicatorTextStyle: const TextStyle(color: Color(AC.bg), fontWeight: FontWeight.bold),
+      ),
+      dividerTheme: const DividerThemeData(color: Color(AC.cardBorder), thickness: 1),
+      dialogTheme: DialogThemeData(
+        backgroundColor: const Color(AC.card),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Color(AC.gold),
+        foregroundColor: Color(AC.bg),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return const Color(AC.gold);
+          return const Color(AC.textSecondary);
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return const Color(AC.gold).withOpacity(0.3);
+          return const Color(AC.cardBorder);
+        }),
+      ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(color: Color(AC.textPrimary), fontWeight: FontWeight.bold),
         headlineMedium: TextStyle(color: Color(AC.textPrimary), fontWeight: FontWeight.bold),

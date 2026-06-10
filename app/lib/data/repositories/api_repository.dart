@@ -1,35 +1,54 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_service.dart';
 import '../models/user_model.dart';
 import '../models/dashboard_stats_model.dart';
 import '../models/soldier_model.dart';
 import '../models/exam_model.dart';
+import '../models/result_model.dart';
+import '../models/notification_model.dart';
 
 class ApiRepository {
   final ApiService _api;
 
   ApiRepository(this._api);
 
+  // ─── Auth ───
   Future<UserModel> login(String username, String password) async {
     final res = await _api.post('/auth/login', data: {
       'username': username,
       'password': password,
     });
     await _api.saveToken(res.data['token']);
-    return UserModel.fromJson(res.data['user']);
+    final user = UserModel.fromJson(res.data['user']);
+    await _cacheUser(user);
+    return user;
   }
 
   Future<void> logout() => _api.clearToken();
 
   Future<UserModel> getMe() async {
-    final res = await _api.get('/auth/me');
-    return UserModel.fromJson(res.data);
+    try {
+      final res = await _api.get('/auth/me');
+      final user = UserModel.fromJson(res.data);
+      await _cacheUser(user);
+      return user;
+    } catch (_) {
+      final cached = await _getCachedUser();
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
+  // ─── Dashboard ───
   Future<DashboardStats> getStats() async {
     final res = await _api.get('/results/stats');
-    return DashboardStats.fromJson(res.data);
+    final stats = DashboardStats.fromJson(res.data);
+    await _cacheStats(stats);
+    return stats;
   }
 
+  // ─── Soldiers ───
   Future<List<SoldierModel>> getSoldiers({
     String? search,
     String? weaponId,
@@ -40,7 +59,10 @@ class ApiRepository {
     if (weaponId != null) params['weaponId'] = weaponId;
     if (specialtyId != null) params['specialtyId'] = specialtyId;
     final res = await _api.get('/soldiers', params: params);
-    return (res.data as List).map((e) => SoldierModel.fromJson(e)).toList();
+    final soldiers =
+        (res.data as List).map((e) => SoldierModel.fromJson(e)).toList();
+    await _cacheSoldiers(soldiers);
+    return soldiers;
   }
 
   Future<SoldierModel> getSoldier(String id) async {
@@ -65,7 +87,8 @@ class ApiRepository {
     return List<Map<String, dynamic>>.from(res.data);
   }
 
-  Future<List<Map<String, dynamic>>> getSpecialties({String? weaponId}) async {
+  Future<List<Map<String, dynamic>>> getSpecialties(
+      {String? weaponId}) async {
     final params = <String, dynamic>{};
     if (weaponId != null) params['weaponId'] = weaponId;
     final res = await _api.get('/specialties', params: params);
@@ -84,6 +107,7 @@ class ApiRepository {
     return List<Map<String, dynamic>>.from(res.data);
   }
 
+  // ─── Exams ───
   Future<List<ExamModel>> getExams({String? type, String? weaponId}) async {
     final params = <String, dynamic>{};
     if (type != null) params['type'] = type;
@@ -109,18 +133,34 @@ class ApiRepository {
     await _api.delete('/exams/$id');
   }
 
+  // ─── Results ───
   Future<Map<String, dynamic>> getResults({
-    String? type, String? weaponId, String? soldierId,
-    int page = 1, int limit = 30,
+    String? type,
+    String? weaponId,
+    String? soldierId,
+    int page = 1,
+    int limit = 100,
   }) async {
-    final params = <String, dynamic>{
-      'page': page, 'limit': limit,
-    };
+    final params = <String, dynamic>{'page': page, 'limit': limit};
     if (type != null) params['type'] = type;
     if (weaponId != null) params['weaponId'] = weaponId;
     if (soldierId != null) params['soldierId'] = soldierId;
     final res = await _api.get('/results', params: params);
-    return res.data;
+    return res.data is Map<String, dynamic> ? res.data as Map<String, dynamic> : {'results': <dynamic>[], 'total': 0, 'page': page};
+  }
+
+  Future<List<ResultModel>> getResultsList({
+    String? soldierId,
+    int limit = 100,
+  }) async {
+    final data = await getResults(soldierId: soldierId, limit: limit);
+    final list = (data['results'] as List? ?? []);
+    return list.map((e) => ResultModel.fromJson(e)).toList();
+  }
+
+  Future<ResultModel> getResult(String id) async {
+    final res = await _api.get('/results/$id');
+    return ResultModel.fromJson(res.data);
   }
 
   Future<void> createResult(Map<String, dynamic> data) async {
@@ -131,6 +171,23 @@ class ApiRepository {
     await _api.delete('/results/$id');
   }
 
+  // ─── Evaluate (direct — no examId required) ───
+  Future<void> evaluateSoldier({
+    required String soldierId,
+    required double fitnessScore,
+    required double specialtyScore,
+    required double disciplineScore,
+    String? notes,
+  }) async {
+    await _api.post('/soldiers/$soldierId/evaluate', data: {
+      'fitnessScore': fitnessScore,
+      'specialtyScore': specialtyScore,
+      'disciplineScore': disciplineScore,
+      'notes': notes,
+    });
+  }
+
+  // ─── Fitness ───
   Future<List<Map<String, dynamic>>> getFitnessExercises() async {
     final res = await _api.get('/fitness/exercises');
     return List<Map<String, dynamic>>.from(res.data);
@@ -140,6 +197,7 @@ class ApiRepository {
     await _api.post('/fitness/results', data: data);
   }
 
+  // ─── Announcements ───
   Future<List<Map<String, dynamic>>> getAnnouncements() async {
     final res = await _api.get('/announcements');
     return List<Map<String, dynamic>>.from(res.data);
@@ -160,10 +218,14 @@ class ApiRepository {
     });
   }
 
-  // Notifications
-  Future<List<Map<String, dynamic>>> getNotifications() async {
+  // ─── Notifications ───
+  Future<List<NotificationModel>> getNotifications() async {
     final res = await _api.get('/notifications');
-    return List<Map<String, dynamic>>.from(res.data);
+    final list = (res.data as List?) ?? [];
+    final notifications =
+        list.map((e) => NotificationModel.fromJson(e)).toList();
+    await _cacheNotifications(notifications);
+    return notifications;
   }
 
   Future<void> markNotificationRead(String id) async {
@@ -176,10 +238,10 @@ class ApiRepository {
 
   Future<int> getUnreadCount() async {
     final res = await _api.get('/notifications/unread-count');
-    return (res.data['count'] as num).toInt();
+    return (res.data['count'] as num?)?.toInt() ?? 0;
   }
 
-  // Users
+  // ─── Users ───
   Future<List<UserModel>> getUsers() async {
     final res = await _api.get('/users');
     return (res.data as List).map((e) => UserModel.fromJson(e)).toList();
@@ -201,26 +263,30 @@ class ApiRepository {
     await _api.delete('/users/$id');
   }
 
-  Future<void> updateUserPermissions(String id, Map<String, dynamic> permissions) async {
-    await _api.patch('/users/$id/permissions', data: {'permissions': permissions});
+  Future<void> updateUserPermissions(
+      String id, Map<String, dynamic> permissions) async {
+    await _api.patch('/users/$id/permissions',
+        data: {'permissions': permissions});
   }
 
-  // Distinctions
-  Future<void> distinguishSoldier(String id, String badge, String citation) async {
-    await _api.post('/soldiers/$id/distinguish', data: {'badge': badge, 'citation': citation});
+  // ─── Distinctions ───
+  Future<void> distinguishSoldier(
+      String id, String badge, String citation) async {
+    await _api.post('/soldiers/$id/distinguish',
+        data: {'badge': badge, 'citation': citation});
   }
 
   Future<void> removeDistinction(String id) async {
     await _api.delete('/soldiers/$id/distinguish');
   }
 
-  // Profile update
+  // ─── Profile ───
   Future<UserModel> updateProfile(Map<String, dynamic> data) async {
     final res = await _api.patch('/auth/profile', data: data);
     return UserModel.fromJson(res.data);
   }
 
-  // Weapons / Specialties management
+  // ─── Weapons / Specialties ───
   Future<void> createWeapon(Map<String, dynamic> data) async {
     await _api.post('/weapons', data: data);
   }
@@ -240,4 +306,55 @@ class ApiRepository {
   Future<void> seedDemoData() async {
     await _api.post('/admin/seed');
   }
+
+  // ═══════════════════════════════════════════
+  //  OFFLINE CACHE (SharedPreferences)
+  // ═══════════════════════════════════════════
+  Future<void> _cacheUser(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('cached_user', jsonEncode(user.toJson()));
+  }
+
+  Future<UserModel?> _getCachedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('cached_user');
+    if (raw == null) return null;
+    return UserModel.fromJson(jsonDecode(raw));
+  }
+
+  Future<void> _cacheStats(DashboardStats stats) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('cached_stats', jsonEncode({
+      'totalSoldiers': stats.totalSoldiers,
+      'totalResults': stats.totalResults,
+      'avgScore': stats.avgScore,
+      'passRate': stats.passRate,
+    }));
+  }
+
+  Future<void> _cacheSoldiers(List<SoldierModel> soldiers) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('cached_soldiers',
+        jsonEncode(soldiers.map((s) => s.toJson()).toList()));
+  }
+
+  Future<void> _cacheNotifications(
+      List<NotificationModel> notifications) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('cached_notifications', jsonEncode(
+        notifications.map((n) => _notifToJson(n)).toList()));
+  }
+
+  Map<String, dynamic> _notifToJson(NotificationModel n) => {
+    'id': n.id, 'type': n.type, 'message': n.message,
+    'evaluated_name': n.evaluatedName,
+    'evaluated_rank': n.evaluatedRank,
+    'evaluated_id': n.evaluatedId,
+    'fitness_score': n.fitnessScore,
+    'specialty_score': n.specialtyScore,
+    'discipline_score': n.disciplineScore,
+    'total_score': n.totalScore,
+    'is_read': n.isRead,
+    'created_at': n.createdAt,
+  };
 }

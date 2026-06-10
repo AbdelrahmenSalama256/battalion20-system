@@ -88,7 +88,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   padding: EdgeInsets.only(top: 8.h),
                   children: [
                     _drawerItem(Icons.person_outline, 'حسابي', () => _navigate(const ProfileScreen())),
-                    _drawerItem(Icons.notifications_outlined, 'الإشعارات', () => _navigate(NotificationsScreen(api: context.read<ApiService>())), badge: _unreadCount),
+                    _drawerItem(Icons.notifications_outlined, 'الإشعارات', () => _navigate(const NotificationsScreen()), badge: _unreadCount),
                     if (isCommander)
                       _drawerItem(Icons.people_outline, 'المستخدمين', () => _navigate(const UsersScreen())),
                     Divider(color: const Color(AC.cardBorder), height: 24.h),

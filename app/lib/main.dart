@@ -8,6 +8,13 @@ import 'core/theme/app_theme.dart';
 import 'presentation/cubits/auth/auth_cubit.dart';
 import 'presentation/cubits/dashboard/dashboard_cubit.dart';
 import 'presentation/cubits/users/users_cubit.dart';
+import 'presentation/cubits/soldiers/soldiers_cubit.dart';
+import 'presentation/cubits/exams/exams_cubit.dart';
+import 'presentation/cubits/results/results_cubit.dart';
+import 'presentation/cubits/announcements/announcements_cubit.dart';
+import 'presentation/cubits/fitness/fitness_cubit.dart';
+import 'presentation/cubits/notifications/notifications_cubit.dart';
+import 'presentation/cubits/evaluation/evaluation_cubit.dart';
 import 'presentation/screens/login/login_screen.dart';
 import 'presentation/screens/dashboard/dashboard_screen.dart';
 
@@ -36,6 +43,13 @@ class BattalionApp extends StatelessWidget {
             BlocProvider(create: (_) => AuthCubit(_api)..checkAuth()),
             BlocProvider(create: (_) => DashboardCubit(_api)),
             BlocProvider(create: (_) => UsersCubit(_api)),
+            BlocProvider(create: (_) => SoldiersCubit(_api)),
+            BlocProvider(create: (_) => ExamsCubit(_api)),
+            BlocProvider(create: (_) => ResultsCubit(_api)),
+            BlocProvider(create: (_) => AnnouncementsCubit(_api)),
+            BlocProvider(create: (_) => FitnessCubit(_api)),
+            BlocProvider(create: (_) => NotificationsCubit(_api)),
+            BlocProvider(create: (_) => EvaluationCubit(_api)),
           ],
           child: MaterialApp(
             title: AC.appName,

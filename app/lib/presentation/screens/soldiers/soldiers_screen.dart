@@ -7,6 +7,8 @@ import '../../../core/network/api_service.dart';
 import '../../../data/models/soldier_model.dart';
 import '../../../data/repositories/api_repository.dart';
 import '../../widgets/score_badge.dart';
+import '../../widgets/distinction_modal.dart';
+import 'soldier_profile_screen.dart';
 
 class SoldiersScreen extends StatefulWidget {
   const SoldiersScreen({super.key});
@@ -71,20 +73,32 @@ class _SoldiersScreenState extends State<SoldiersScreen> {
     );
   }
 
-  void _showSoldierDetail(SoldierModel s) {
-    showModalBottomSheet(
+  void _showSoldierDetail(SoldierModel s) async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => SoldierProfileScreen(soldierId: s.id)),
+    );
+    if (result == 'edit') {
+      _showForm(s);
+    }
+    _refresh();
+  }
+
+  void _showDistinction(SoldierModel s) {
+    DistinctionModal.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(AC.card),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      builder: (ctx) => _SoldierDetailSheet(soldier: s, api: context.read<ApiService>(), onChanged: () {
-        context.read<SoldiersCubit>().loadSoldiers(
-          search: _searchCtrl.text,
-          weaponId: _weaponFilter,
-        );
-      }),
+      soldierId: s.id,
+      soldierName: s.name,
+      currentBadge: s.distinctionBadge,
+      currentCitation: s.distinctionCitation,
+      onChanged: _refresh,
+    );
+  }
+
+  void _refresh() {
+    context.read<SoldiersCubit>().loadSoldiers(
+      search: _searchCtrl.text,
+      weaponId: _weaponFilter,
     );
   }
 
@@ -274,7 +288,20 @@ class _SoldiersScreenState extends State<SoldiersScreen> {
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_left, color: const Color(AC.textSecondary), size: 20.r),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(s.distinctionBadge != null ? Icons.star : Icons.star_outline,
+                                        color: s.distinctionBadge != null ? const Color(AC.gold) : const Color(AC.textSecondary),
+                                        size: 18.r),
+                                    onPressed: () => _showDistinction(s),
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(minWidth: 28.r, minHeight: 28.r),
+                                  ),
+                                  Icon(Icons.chevron_left, color: const Color(AC.textSecondary), size: 16.r),
+                                ],
+                              ),
                             ],
                           ),
                         ),

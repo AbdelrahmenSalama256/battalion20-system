@@ -5,6 +5,7 @@ class UserModel {
   final String role;
   final bool isActive;
   final String? rankName;
+  final int? rankOrder;
   final String? avatarUrl;
   final Map<String, dynamic>? permissions;
   final String? createdAt;
@@ -16,6 +17,7 @@ class UserModel {
     required this.role,
     this.isActive = true,
     this.rankName,
+    this.rankOrder,
     this.avatarUrl,
     this.permissions,
     this.createdAt,
@@ -28,6 +30,9 @@ class UserModel {
         role: json['role'] ?? 'officer',
         isActive: json['is_active'] ?? true,
         rankName: json['rank_name'],
+        rankOrder: json['rank_order'] is int
+            ? json['rank_order']
+            : (json['rank_order'] is num ? (json['rank_order'] as num).toInt() : null),
         avatarUrl: json['avatar_url'],
         permissions: json['permissions'] is Map ? json['permissions'] as Map<String, dynamic> : null,
         createdAt: json['created_at'],
@@ -40,9 +45,17 @@ class UserModel {
         'role': role,
         'is_active': isActive,
         'rank_name': rankName,
+        'rank_order': rankOrder,
         'avatar_url': avatarUrl,
         'permissions': permissions,
       };
 
-  String get roleLabel => role == 'commander' ? 'قائد' : role == 'officer' ? 'ضابط' : 'صف ضابط';
+  String get roleLabel =>
+      role == 'commander' ? 'قائد' : role == 'officer' ? 'ضابط' : 'صف ضابط';
+
+  bool canEvaluate(UserModel other) {
+    if (role == 'commander') return true;
+    if (rankOrder == null || other.rankOrder == null) return false;
+    return rankOrder! < other.rankOrder!;
+  }
 }
