@@ -38,6 +38,13 @@ class AuthCubit extends Cubit<AuthState> {
     await _repo.logout();
     emit(AuthUnauthenticated());
   }
+
+  void updateUser(UserModel updated) {
+    final s = state;
+    if (s is AuthAuthenticated) {
+      emit(AuthAuthenticated(updated));
+    }
+  }
 }
 
 sealed class AuthState extends Equatable {

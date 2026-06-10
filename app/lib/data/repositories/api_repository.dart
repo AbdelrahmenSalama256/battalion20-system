@@ -80,7 +80,7 @@ class ApiRepository {
   }
 
   Future<List<Map<String, dynamic>>> getRankTypes() async {
-    final res = await _api.get('/rank-types');
+    final res = await _api.get('/ranks/types');
     return List<Map<String, dynamic>>.from(res.data);
   }
 
@@ -215,8 +215,9 @@ class ApiRepository {
   }
 
   // Profile update
-  Future<void> updateProfile(String id, Map<String, dynamic> data) async {
-    await _api.put('/soldiers/$id', data: data);
+  Future<UserModel> updateProfile(Map<String, dynamic> data) async {
+    final res = await _api.patch('/auth/profile', data: data);
+    return UserModel.fromJson(res.data);
   }
 
   // Weapons / Specialties management
@@ -234,5 +235,9 @@ class ApiRepository {
 
   Future<void> deleteSpecialty(String id) async {
     await _api.delete('/specialties/$id');
+  }
+
+  Future<void> seedDemoData() async {
+    await _api.post('/admin/seed');
   }
 }

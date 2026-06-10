@@ -8,9 +8,7 @@ import '../../cubits/auth/auth_cubit.dart';
 import '../../cubits/soldiers/soldiers_cubit.dart';
 import '../../cubits/exams/exams_cubit.dart';
 import '../../cubits/results/results_cubit.dart';
-import '../../cubits/fitness/fitness_cubit.dart';
 import '../../cubits/announcements/announcements_cubit.dart';
-import '../../cubits/settings/settings_cubit.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_service.dart';
 import '../../../data/repositories/api_repository.dart';
@@ -21,7 +19,6 @@ import '../../widgets/app_drawer.dart';
 import '../soldiers/soldiers_screen.dart';
 import '../exams/exams_screen.dart';
 import '../results/results_screen.dart';
-import '../fitness/fitness_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../settings/settings_screen.dart';
 
@@ -42,7 +39,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _TabItem('الأفراد', Icons.people_outline, Icons.people),
     _TabItem('الامتحانات', Icons.assignment_outlined, Icons.assignment),
     _TabItem('النتائج', Icons.grading_outlined, Icons.grading),
-    _TabItem('اللياقة', Icons.fitness_center_outlined, Icons.fitness_center),
     _TabItem('الإعلانات', Icons.campaign_outlined, Icons.campaign),
     _TabItem('الإعدادات', Icons.settings_outlined, Icons.settings),
   ];
@@ -103,7 +99,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       BlocProvider(create: (_) => SoldiersCubit(api)..loadSoldiers(), child: const SoldiersScreen()),
       BlocProvider(create: (_) => ExamsCubit(api)..loadExams(), child: const ExamsScreen()),
       BlocProvider(create: (_) => ResultsCubit(api)..loadResults(), child: const ResultsScreen()),
-      BlocProvider(create: (_) => FitnessCubit(api)..loadExercises(), child: const FitnessScreen()),
       BlocProvider(create: (_) => AnnouncementsCubit(api)..loadAnnouncements(), child: const AnnouncementsScreen()),
       const SettingsScreen(),
     ];

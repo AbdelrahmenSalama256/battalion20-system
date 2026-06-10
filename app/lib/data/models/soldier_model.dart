@@ -12,7 +12,12 @@ class SoldierModel {
   final String? weaponColor;
   final String? specialtyId;
   final String? specialtyName;
+  final String? specificSpecialty;
   final String? notes;
+  final String? distinctionBadge;
+  final String? distinctionCitation;
+  final String? distinguishedByName;
+  final Map<String, dynamic>? lastResult;
 
   SoldierModel({
     required this.id,
@@ -28,7 +33,12 @@ class SoldierModel {
     this.weaponColor,
     this.specialtyId,
     this.specialtyName,
+    this.specificSpecialty,
     this.notes,
+    this.distinctionBadge,
+    this.distinctionCitation,
+    this.distinguishedByName,
+    this.lastResult,
   });
 
   factory SoldierModel.fromJson(Map<String, dynamic> json) => SoldierModel(
@@ -45,7 +55,12 @@ class SoldierModel {
     weaponColor: json['weapon_color'],
     specialtyId: json['specialty_id'],
     specialtyName: json['specialty_name'],
+    specificSpecialty: json['specific_specialty'],
     notes: json['notes'],
+    distinctionBadge: json['distinction_badge'],
+    distinctionCitation: json['distinction_citation'],
+    distinguishedByName: json['distinguished_by_name'],
+    lastResult: json['last_result'] is Map ? json['last_result'] as Map<String, dynamic> : null,
   );
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +69,7 @@ class SoldierModel {
     'rankId': rankId,
     'weaponId': weaponId,
     'specialtyId': specialtyId,
+    'specificSpecialty': specificSpecialty,
     'notes': notes,
   };
 }
