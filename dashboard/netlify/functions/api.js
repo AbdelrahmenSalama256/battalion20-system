@@ -26,7 +26,8 @@ const db = { query: (text, params) => pool.query(text, params), pool };
   await pool.query("ALTER TABLE results ADD COLUMN IF NOT EXISTS fitness_score NUMERIC(6,2)");
   await pool.query("ALTER TABLE results ADD COLUMN IF NOT EXISTS specialty_score NUMERIC(6,2)");
   await pool.query("ALTER TABLE results ADD COLUMN IF NOT EXISTS discipline_score NUMERIC(6,2)");
-  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_id UUID REFERENCES ranks(id) ON DELETE SET NULL");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_id UUID");
+  try{await pool.query("ALTER TABLE users ADD CONSTRAINT fk_user_rank FOREIGN KEY(rank_id) REFERENCES ranks(id) ON DELETE SET NULL")}catch(e){}
   await pool.query("CREATE TABLE IF NOT EXISTS notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type VARCHAR(50) DEFAULT 'evaluation', message TEXT, evaluator_id UUID REFERENCES users(id) ON DELETE SET NULL, evaluator_name VARCHAR(120), evaluator_rank VARCHAR(80), evaluator_weapon VARCHAR(100), evaluated_id UUID REFERENCES soldiers(id) ON DELETE CASCADE, evaluated_name VARCHAR(150), evaluated_rank VARCHAR(80), evaluated_specialty VARCHAR(100), fitness_score NUMERIC(6,2), specialty_score NUMERIC(6,2), discipline_score NUMERIC(6,2), total_score NUMERIC(6,2), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())");
   console.log('Migrations done');
 }catch(e){console.error('Migration:',e.message)}})();
@@ -62,7 +63,7 @@ er.post('/login',async(req,res)=>{
   try{
     const{username,password}=req.body;
     if(!username||!password) return res.status(400).json({error:'يرجى إدخال البيانات'});
-    const{rows}=await db.query("SELECT u.*,r.name rank_name,r.sort_order rank_order FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.username=$1 AND u.is_active=true",[username]);
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.password_hash,u.role,u.is_active,u.created_at,u.rank_id,r.name rank_name,r.sort_order rank_order FROM users u LEFT JOIN ranks r ON r.id=u.rank_id::uuid WHERE u.username=$1 AND u.is_active=true",[username]);
     if(!rows.length||!(await bcrypt.compare(password,rows[0].password_hash)))
       return res.status(401).json({error:'بيانات الدخول غير صحيحة'});
     const u=rows[0];
