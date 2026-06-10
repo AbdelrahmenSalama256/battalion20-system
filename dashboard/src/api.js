@@ -24,13 +24,7 @@ export const api = {
   changePassword: (oldPassword, newPassword) => req('PATCH', '/auth/change-password', { oldPassword, newPassword }),
 
   // Rankings
-  getRankTypes: () => req('GET', '/rank-types'),
-  createRankType: (data) => req('POST', '/rank-types', data),
-  deleteRankType: (id) => req('DELETE', `/rank-types/${id}`),
-
-  getRanks: (typeId) => req('GET', `/ranks${typeId ? `?typeId=${typeId}` : ''}`),
-  createRank: (data) => req('POST', '/ranks', data),
-  deleteRank: (id) => req('DELETE', `/ranks/${id}`),
+  getRankTypes: () => req('GET', '/ranks/types'),
 
   // Weapons & Specialties
   getWeapons: () => req('GET', '/weapons'),
@@ -99,6 +93,13 @@ export const api = {
   toggleUser: (id) => req('PATCH', `/users/${id}/toggle`),
   deleteUser: (id) => req('DELETE', `/users/${id}`),
 
-  // AI
-  askAI: (system, question) => req('POST', '/ai/ask', { system, question }),
+  // Notifications
+  getNotifications: () => req('GET', '/notifications'),
+  markNotificationRead: (id) => req('PATCH', `/notifications/${id}/read`),
+  markAllNotificationsRead: () => req('PATCH', '/notifications/read-all'),
+  getUnreadCount: () => req('GET', '/notifications/unread-count'),
+
+  // Distinctions
+  distinguishSoldier: (id, badge, citation) => req('POST', `/soldiers/${id}/distinguish`, { badge, citation }),
+  removeDistinction: (id) => req('DELETE', `/soldiers/${id}/distinguish`),
 };
