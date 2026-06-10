@@ -41,7 +41,9 @@ export default function App(){
 
   useEffect(()=>{
     if(!token)return;
-    const iv=setInterval(async()=>{try{const n=await api.getNotifications();setData(d=>({...d,notifications:n}))}catch(e){}},10000);
+    let prevCount=data.notifications.length;
+    const iv=setInterval(async()=>{try{const n=await api.getNotifications();setData(d=>{if(n.length>prevCount&&prevCount>0&&d.notifications.length>0){if(Notification.permission==='granted'){const nu=n[0];new Notification('🔔 إشعار جديد',{body:nu.message||'لديك إشعار جديد'})}}prevCount=n.length;return{...d,notifications:n}})}catch(e){}},10000);
+    if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
     return ()=>clearInterval(iv);
   },[token]);
 

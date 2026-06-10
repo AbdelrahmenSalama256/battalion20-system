@@ -353,6 +353,11 @@ ft.post('/results',auth,async(req,res)=>{
       const avg=fitEx.rows.length>0?Math.round((totalPct/fitEx.rows.length)*100)/100:0;
       await client.query('INSERT INTO results(exam_id,soldier_id,result_type,total_score,fitness_score,notes,exam_date,entered_by)VALUES(NULL,$1,$2,$3,$4,$5,$6,$7)',[soldierId,'fitness',avg,avg,notes||null,examDate||new Date().toISOString().split('T')[0],req.user.id]);
       await client.query('COMMIT');
+      // Notify commander if non-commander evaluated
+      if(req.user.role!=='commander'){
+        const s=await db.query("SELECT s.name sname,r.name srank,sp.name sspec FROM soldiers s LEFT JOIN ranks r ON r.id=s.rank_id LEFT JOIN specialties sp ON sp.id=s.specialty_id WHERE s.id=$1",[soldierId]);
+        if(s.rows.length){const sr=s.rows[0];await db.query("INSERT INTO notifications(type,message,evaluator_id,evaluator_name,evaluated_id,evaluated_name,fitness_score,total_score)VALUES('evaluation',$1,$2,$3,$4,$5,$6,$7)",[`${req.user.name} قام بتقييم لياقة ${sr.sname}`,req.user.id,req.user.name,soldierId,sr.sname,avg,avg])}
+      }
       res.status(201).json({message:'تم الحفظ',totalScore:avg});
     }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
   }catch(e){res.status(500).json({error:e.message})}
