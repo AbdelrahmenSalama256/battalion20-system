@@ -22,6 +22,7 @@ export const api = {
   login: (username, password) => req('POST', '/auth/login', { username, password }),
   me: () => req('GET', '/auth/me'),
   changePassword: (oldPassword, newPassword) => req('PATCH', '/auth/change-password', { oldPassword, newPassword }),
+  updateProfile: (data) => req('PATCH', '/auth/profile', data),
 
   // Rankings
   getRankTypes: () => req('GET', '/ranks/types'),

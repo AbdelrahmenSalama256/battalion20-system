@@ -30,6 +30,7 @@ async function runMigrations(){
   try{await pool.query("ALTER TABLE users ADD CONSTRAINT fk_user_rank FOREIGN KEY(rank_id) REFERENCES ranks(id) ON DELETE SET NULL")}catch(e){}
   await pool.query("CREATE TABLE IF NOT EXISTS notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type VARCHAR(50) DEFAULT 'evaluation', message TEXT, evaluator_id UUID REFERENCES users(id) ON DELETE SET NULL, evaluator_name VARCHAR(120), evaluator_rank VARCHAR(80), evaluator_weapon VARCHAR(100), evaluated_id UUID REFERENCES soldiers(id) ON DELETE CASCADE, evaluated_name VARCHAR(150), evaluated_rank VARCHAR(80), evaluated_specialty VARCHAR(100), fitness_score NUMERIC(6,2), specialty_score NUMERIC(6,2), discipline_score NUMERIC(6,2), total_score NUMERIC(6,2), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())");
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}'");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT");
   console.log('Migrations done');
 }
 
@@ -78,17 +79,17 @@ er.post('/login',async(req,res)=>{
       return res.status(401).json({error:'بيانات الدخول غير صحيحة'});
     const u=rows[0];
     const token=jwt.sign({id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,rankOrder:u.rank_order},process.env.JWT_SECRET,{expiresIn:'24h'});
-    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,permissions:u.permissions||{}}});
+    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,permissions:u.permissions||{},avatar_url:u.avatar_url}});
   }catch(e){res.status(500).json({error:e.message})}
 });
 er.get('/me',auth,async(req,res)=>{
   try{
-    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.permissions,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.permissions,u.avatar_url,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
     if(!rows.length) return res.status(404).json({error:'غير موجود'});
     res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
 });
-er.patch('/change-password',auth,commanderOnly,async(req,res)=>{
+er.patch('/change-password',auth,async(req,res)=>{
   try{
     const{oldPassword,newPassword}=req.body;
     if(!oldPassword||!newPassword) return res.status(400).json({error:'يرجى إدخال البيانات'});
@@ -97,6 +98,23 @@ er.patch('/change-password',auth,commanderOnly,async(req,res)=>{
       return res.status(400).json({error:'كلمة المرور القديمة غير صحيحة'});
     await db.query('UPDATE users SET password_hash=$1 WHERE id=$2',[await bcrypt.hash(newPassword,10),req.user.id]);
     res.json({message:'تم التغيير بنجاح'});
+  }catch(e){res.status(500).json({error:e.message})}
+});
+er.patch('/profile',auth,async(req,res)=>{
+  try{
+    const{name,username,avatarUrl}=req.body;
+    if(username&&username!==req.user.username){
+      const{rows:exist}=await db.query('SELECT id FROM users WHERE username=$1 AND id!=$2',[username,req.user.id]);
+      if(exist.length)return res.status(400).json({error:'اسم المستخدم موجود بالفعل'});
+    }
+    const fields=[];const vals=[];let i=1;
+    if(name){fields.push(`name=$${i++}`);vals.push(name)}
+    if(username){fields.push(`username=$${i++}`);vals.push(username)}
+    if(avatarUrl!==undefined){fields.push(`avatar_url=$${i++}`);vals.push(avatarUrl)}
+    if(!fields.length)return res.status(400).json({error:'لا توجد بيانات للتحديث'});
+    vals.push(req.user.id);
+    const{rows}=await db.query(`UPDATE users SET ${fields.join(',')} WHERE id=$${i} RETURNING id,name,username,role,avatar_url,permissions`,vals);
+    res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
 });
 app.use('/api/auth',er);

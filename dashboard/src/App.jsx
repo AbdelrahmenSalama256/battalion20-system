@@ -190,7 +190,7 @@ export default function App(){
           {tab==='announcements'&&<AnnouncementsPage announcements={data.announcements} onRefresh={load} user={u}/>}
           {tab==='users'&&<UsersPage users={data.users} ranks={data.ranks} onRefresh={load} user={u}/>}
           {tab==='settings'&&<SettingsPage weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}/>}
-          {tab==='profile'&&<ProfilePage user={u}/>}
+          {tab==='profile'&&<ProfilePage user={u} onUpdate={setU}/>}
         </div>
       </div>
 
@@ -607,12 +607,89 @@ function UserForm({ranks,onClose}){
   </Modal>);
 }
 
-function ProfilePage({user}){
-  return(<div className="card border-military p-3" style={{maxWidth:500}}>
-    <h5 className="text-gold mb-3">👤 حسابي</h5>
-    <table className="table table-borderless table-sm mb-0"><tbody>
-      {[{l:'الاسم',v:user?.name},{l:'اسم المستخدم',v:user?.username},{l:'الدور',v:{commander:'قائد',officer:'ضابط',nco:'صف ضابط'}[user?.role]},{l:'الرتبة',v:user?.rank_name||'-'}].map(r=><tr key={r.l}><td className="text-muted-military small py-1" style={{width:120}}>{r.l}</td><td className="small py-1">{r.v}</td></tr>)}
-    </tbody></table>
+function ProfilePage({user,onUpdate}){
+  const[editing,setEditing]=useState(false);
+  const[name,setName]=useState(user?.name||'');
+  const[username,setUsername]=useState(user?.username||'');
+  const[avatarUrl,setAvatarUrl]=useState(user?.avatar_url||'');
+  const[saving,setSaving]=useState(false);
+
+  const[showPwd,setShowPwd]=useState(false);
+  const[oldPwd,setOldPwd]=useState('');
+  const[newPwd,setNewPwd]=useState('');
+  const[pwdSaving,setPwdSaving]=useState(false);
+
+  useEffect(()=>{setName(user?.name||'');setUsername(user?.username||'');setAvatarUrl(user?.avatar_url||'')},[user]);
+
+  async function saveProfile(){
+    setSaving(true);
+    try{
+      const updated=await api.updateProfile({name,username,avatarUrl:avatarUrl||null});
+      onUpdate(prev=>({...prev,...updated}));
+      setEditing(false);
+    }catch(e){alert(e.message)}
+    setSaving(false);
+  }
+
+  async function changePassword(){
+    if(!oldPwd||!newPwd)return alert('يرجى إدخال كلمة المرور القديمة والجديدة');
+    if(newPwd.length<6)return alert('كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل');
+    setPwdSaving(true);
+    try{
+      await api.changePassword(oldPwd,newPwd);
+      alert('✅ تم تغيير كلمة المرور بنجاح');
+      setShowPwd(false);setOldPwd('');setNewPwd('');
+    }catch(e){alert(e.message)}
+    setPwdSaving(false);
+  }
+
+  const roleLabel={commander:'قائد',officer:'ضابط',nco:'صف ضابط'};
+
+  return(<div style={{maxWidth:600}}>
+    <div className="card border-military p-3 mb-3">
+      <div className="d-flex align-items-start gap-3">
+        <div className="position-relative" style={{width:80,height:80}}>
+          {avatarUrl?<img src={avatarUrl} className="rounded-circle border border-military" style={{width:80,height:80,objectFit:'cover'}}/>:<div className="rounded-circle border border-military d-flex align-items-center justify-content-center bg-dark" style={{width:80,height:80,fontSize:'2rem'}}>🛡️</div>}
+          {editing&&<input type="text" value={avatarUrl} onChange={e=>setAvatarUrl(e.target.value)} className="form-control bg-card text-light border-military mt-1" placeholder="رابط الصورة" style={{fontSize:'0.65rem',position:'absolute',top:'100%',left:0,width:200}}/>}
+        </div>
+        <div className="flex-grow-1">
+          <div className="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 className="text-gold mb-1">{user?.name}</h5>
+              <div className="small text-muted-military">@{user?.username} • {roleLabel[user?.role]||user?.role}</div>
+              {user?.rank_name&&<div className="small text-muted-military">{user.rank_name}</div>}
+            </div>
+            <button onClick={()=>{if(editing){setName(user?.name||'');setUsername(user?.username||'');setAvatarUrl(user?.avatar_url||'')}setEditing(!editing)}} className="btn btn-outline-gold btn-sm">{editing?'إلغاء':'✏️ تعديل'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {editing?<div className="card border-military p-3 mb-3">
+      <h6 className="text-gold mb-3">✏️ تعديل البيانات</h6>
+      <div className="row g-2 mb-3">
+        <div className="col-md-6"><label className="small text-muted-military d-block mb-1">الاسم</label><input value={name} onChange={e=>setName(e.target.value)} className="form-control bg-card text-light border-military"/></div>
+        <div className="col-md-6"><label className="small text-muted-military d-block mb-1">اسم المستخدم</label><input value={username} onChange={e=>setUsername(e.target.value)} className="form-control bg-card text-light border-military"/></div>
+      </div>
+      <button onClick={saveProfile} disabled={saving} className="btn btn-gold">{saving?'جاري الحفظ...':'💾 حفظ التغييرات'}</button>
+    </div>:<div className="card border-military p-3 mb-3">
+      <h6 className="text-gold mb-3">📋 البيانات</h6>
+      <table className="table table-borderless table-sm mb-0"><tbody>
+        {[{l:'الاسم',v:user?.name},{l:'اسم المستخدم',v:user?.username},{l:'الدور',v:roleLabel[user?.role]||user?.role},{l:'الرتبة',v:user?.rank_name||'-'}].map(r=><tr key={r.l}><td className="text-muted-military small py-1" style={{width:120}}>{r.l}</td><td className="small py-1">{r.v}</td></tr>)}
+      </tbody></table>
+    </div>}
+
+    {!showPwd?<button onClick={()=>setShowPwd(true)} className="btn btn-outline-gold btn-sm mb-3">🔑 تغيير كلمة المرور</button>:<div className="card border-military p-3 mb-3">
+      <h6 className="text-gold mb-3">🔑 تغيير كلمة المرور</h6>
+      <div className="row g-2 mb-3">
+        <div className="col-md-6"><label className="small text-muted-military d-block mb-1">كلمة المرور القديمة</label><input type="password" value={oldPwd} onChange={e=>setOldPwd(e.target.value)} className="form-control bg-card text-light border-military"/></div>
+        <div className="col-md-6"><label className="small text-muted-military d-block mb-1">كلمة المرور الجديدة</label><input type="password" value={newPwd} onChange={e=>setNewPwd(e.target.value)} className="form-control bg-card text-light border-military"/></div>
+      </div>
+      <div className="d-flex gap-2">
+        <button onClick={changePassword} disabled={pwdSaving} className="btn btn-gold">{pwdSaving?'جاري...':'تأكيد'}</button>
+        <button onClick={()=>{setShowPwd(false);setOldPwd('');setNewPwd('')}} className="btn btn-outline-secondary">إلغاء</button>
+      </div>
+    </div>}
   </div>);
 }
 
