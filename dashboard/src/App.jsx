@@ -89,7 +89,7 @@ export default function App(){
     <div className="app">
       <Sidebar tab={tab} onTab={setTab} user={u} onLogout={handleLogout} unread={unread} onNotif={()=>setNotifOpen(o=>!o)}/>
       <div className={`notif-rail ${notifOpen?'open':''}`}>
-        <NotificationPanel notifications={data.notifications} onMarkRead={markRead} onMarkAll={markAllRead}
+        <NotificationPanel notifications={data.notifications} onMarkRead={markRead} onMarkAll={markAllRead} onClose={()=>setNotifOpen(false)}
           onSoldierClick={id=>{const s=data.soldiers.find(x=>x.id===id);if(s){setSelectedSoldier(s);setNotifOpen(false)}}}/>
       </div>
       <main className="main">
@@ -129,7 +129,12 @@ function Sidebar({tab,onTab,user,onLogout,unread,onNotif}){
   return(<>
     <button className="menu-toggle" onClick={()=>setOpen(o=>!o)}>☰</button>
     <aside className={`sidebar ${open?'open':''}`}>
-      <div className="sidebar-header"><div className="sidebar-logo">🛡️</div><h2>كتيبة 20</h2><div className="sidebar-user">{user?.name}</div></div>
+      <div className="sidebar-header">
+        <div className="sidebar-logo">🛡️</div>
+        <h2>كتيبة 20</h2>
+        <div className="sidebar-user">{user?.name}</div>
+        <button className="bell-btn" onClick={onNotif}>🔔{unread>0&&<span className="bell-badge">{unread}</span>}</button>
+      </div>
       <nav className="sidebar-nav">
         {tabs.map(t=><button key={t.id} onClick={()=>{onTab(t.id);setOpen(false)}} className={`sidebar-btn ${tab===t.id?'active':''}`}>
           <span className="sidebar-btn-icon">{t.icon}</span>
@@ -350,9 +355,9 @@ function ResultForm({soldiers,exams,onClose}){
   </Modal>);
 }
 
-function NotificationPanel({notifications,onMarkRead,onMarkAll,onSoldierClick}){
+function NotificationPanel({notifications,onMarkRead,onMarkAll,onSoldierClick,onClose}){
   return(<div className="notif-panel">
-    <div className="notif-header"><h3>الإشعارات</h3><button onClick={onMarkAll} className="btn-text">قراءة الكل</button></div>
+    <div className="notif-header"><h3>الإشعارات</h3><div style={{display:'flex',gap:6}}><button onClick={onMarkAll} className="btn-text">قراءة الكل</button><button onClick={onClose} className="btn-text">✕</button></div></div>
     <div className="notif-list">
       {notifications.length===0&&<div className="empty" style={{padding:24}}>لا توجد إشعارات</div>}
       {notifications.map(n=><div key={n.id} className={`notif-item ${n.is_read?'':'unread'}`} onClick={()=>{if(!n.is_read)onMarkRead(n.id);if(n.evaluated_id)onSoldierClick(n.evaluated_id)}}>
