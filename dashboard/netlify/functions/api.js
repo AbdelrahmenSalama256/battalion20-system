@@ -177,6 +177,24 @@ sl.delete('/:id/distinguish',auth,commanderOnly,async(req,res)=>{
   try{
     const{rows}=await db.query('UPDATE soldiers SET distinction_badge=NULL,distinction_citation=NULL,distinguished_by=NULL,distinguished_at=NULL WHERE id=$1 RETURNING *',[req.params.id]);
     res.json(rows[0]);
+});
+sl.post('/:id/evaluate',auth,async(req,res)=>{
+  try{
+    const{fitnessScore,specialtyScore,disciplineScore,notes}=req.body;
+    if(!await canEvaluate(req.user.id,req.params.id)&&req.user.role!=='commander') return res.status(403).json({error:'لا يمكنك تقييم هذا الفرد'});
+    const fs=cn(fitnessScore),ss=cn(specialtyScore),ds=cn(disciplineScore);
+    const total=[fs,ss,ds].every(s=>s!=null)?Math.round((fs+ss+ds)/3*100)/100:null;
+    const result=await db.query("INSERT INTO results(soldier_id,result_type,total_score,fitness_score,specialty_score,discipline_score,notes,exam_date,entered_by) VALUES($1,'evaluation',$2,$3,$4,$5,$6,$7,$8) RETURNING *",[req.params.id,total,fs,ss,ds,notes||null,new Date().toISOString().split('T')[0],req.user.id]);
+    if(req.user.role!=='commander'){
+      const s=await db.query("SELECT s.name sname,r.name srank,sp.name sspec,w.name sweapon FROM soldiers s LEFT JOIN ranks r ON r.id=s.rank_id LEFT JOIN specialties sp ON sp.id=s.specialty_id LEFT JOIN weapons w ON w.id=s.weapon_id WHERE s.id=$1",[req.params.id]);
+      if(s.rows.length){
+        const sr=s.rows[0];let msg=`${req.user.name} (${req.user.role}) قام بتقييم ${sr.sname}`;
+        await db.query('INSERT INTO notifications(type,message,evaluator_id,evaluator_name,evaluator_rank,evaluator_weapon,evaluated_id,evaluated_name,evaluated_rank,evaluated_specialty,fitness_score,specialty_score,discipline_score,total_score) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',['evaluation',msg,req.user.id,req.user.name,req.user.role,'',req.params.id,sr.sname,sr.srank||'',sr.sspec||'',fs,ss,ds,total]);
+      }
+    }
+    res.status(201).json(result.rows[0]);
+  }catch(e){res.status(500).json({error:e.message})}
+});
   }catch(e){res.status(500).json({error:e.message})}
 });
 app.use('/api/soldiers',sl);

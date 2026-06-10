@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ملف الجندي - Battalion 20</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green-dark:#1e2a1e;--green-card:#0f1a0f;--green-light:#2a3a2a;
+  --gold:#d4af37;--gold-light:#e8c84a;--gold-dark:#b8962e;
+  --sand:#d4c9a8;--sand-light:#e8dfc4;--sand-dark:#b8ad8a;
+  --text:#f0f0e8;--text-muted:#a0a898;--danger:#dc3545;--success:#28a745;
+  --radius:12px;--radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,.4);--transition:all .25s ease;
+}
+html,body{height:100%}
+body{
+  font-family:'Noto Sans Arabic',sans-serif;background:var(--green-dark);color:var(--text);
+  line-height:1.6;overflow-x:hidden;direction:rtl;
+}
+a{color:var(--gold);text-decoration:none}
+a:hover{color:var(--gold-light)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--green-dark)}
+::-webkit-scrollbar-thumb{background:var(--gold-dark);border-radius:3px}
+
+/* ─── LAYOUT ─── */
+.container{max-width:1280px;margin:0 auto;padding:16px}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--green-light);margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.top-bar .back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--green-card);border:1px solid var(--gold-dark);border-radius:var(--radius-sm);color:var(--gold);font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);min-height:44px}
+.top-bar .back-btn:hover{background:var(--gold);color:var(--green-dark)}
+.top-bar .page-title{font-size:20px;font-weight:700;color:var(--gold)}
+.top-bar .soldier-id-badge{font-size:13px;color:var(--text-muted);background:var(--green-card);padding:6px 14px;border-radius:20px;border:1px solid var(--green-light)}
+
+.main-grid{display:grid;gap:20px}
+@media(min-width:1024px){.main-grid{grid-template-columns:320px 1fr 280px}}
+
+/* ─── CARDS ─── */
+.card{background:var(--green-card);border:1px solid var(--green-light);border-radius:var(--radius);padding:20px;transition:var(--transition)}
+.card-title{font-size:15px;font-weight:700;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px}
+.skeleton{background:linear-gradient(90deg,var(--green-light) 25%,var(--green-card) 50%,var(--green-light) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px;height:16px;margin-bottom:10px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ─── PROFILE CARD ─── */
+.profile-card{text-align:center;position:relative}
+.profile-card .avatar-wrap{width:120px;height:120px;margin:0 auto 16px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;background:var(--green-light);position:relative}
+.profile-card .avatar-wrap img{width:100%;height:100%;object-fit:cover}
+.profile-card .avatar-wrap .avatar-fallback{font-size:48px;font-weight:900;color:var(--gold)}
+.profile-card .distinction-badge-top{position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:32px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.profile-card .soldier-name{font-size:24px;font-weight:700;color:var(--text);margin-bottom:2px}
+.profile-card .soldier-rank{font-size:16px;color:var(--gold);font-weight:600;margin-bottom:8px}
+.profile-card .soldier-rank i{margin-left:6px}
+.profile-card .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--green-light)}
+.profile-card .info-item{background:var(--green-dark);padding:10px 8px;border-radius:var(--radius-sm)}
+.profile-card .info-item .label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px}
+.profile-card .info-item .value{font-size:13px;font-weight:600;color:var(--text)}
+.profile-card .notes-section{margin-top:12px;padding:12px;background:var(--green-dark);border-radius:var(--radius-sm)}
+.profile-card .notes-section .label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px}
+.profile-card .notes-section .value{font-size:13px;color:var(--sand);font-style:italic}
+
+/* ─── SCORES ─── */
+.scores-card .score-item{margin-bottom:14px}
+.scores-card .score-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.scores-card .score-header .score-label{font-size:13px;font-weight:500;color:var(--text)}
+.scores-card .score-header .score-val{font-size:14px;font-weight:700;color:var(--gold)}
+.progress-bar-wrap{height:20px;background:var(--green-dark);border-radius:10px;overflow:hidden;position:relative}
+.progress-bar-wrap .fill{height:100%;border-radius:10px;transition:width .8s ease;position:relative}
+.progress-bar-wrap .fill.fitness{background:linear-gradient(90deg,#2d7d46,#4caf50)}
+.progress-bar-wrap .fill.specialty{background:linear-gradient(90deg,#1565c0,#42a5f5)}
+.progress-bar-wrap .fill.discipline{background:linear-gradient(90deg,#e65100,#ff9800)}
+.progress-bar-wrap .fill.total{background:linear-gradient(90deg,var(--gold-dark),var(--gold))}
+.scores-card .last-eval-info{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--green-light)}
+.scores-card .last-eval-info span{display:flex;align-items:center;gap:6px}
+.scores-card .no-scores{text-align:center;padding:24px;color:var(--text-muted)}
+.scores-card .no-scores i{font-size:36px;display:block;margin-bottom:8px;color:var(--green-light)}
+
+/* ─── DISTINCTIONS ─── */
+.distinction-current{text-align:center;padding:16px;border-radius:var(--radius-sm);margin-bottom:16px}
+.distinction-current.gold{background:linear-gradient(135deg,#3a2e0a,#1e2a1e);border:2px solid var(--gold)}
+.distinction-current.silver{background:linear-gradient(135deg,#2a2a2e,#1e2a1e);border:2px solid #a0a0a8}
+.distinction-current.bronze{background:linear-gradient(135deg,#2e1a0a,#1e2a1e);border:2px solid #cd7f32}
+.distinction-current.none{background:var(--green-dark);border:1px dashed var(--green-light)}
+.distinction-current .badge-icon{font-size:48px;display:block;margin-bottom:8px}
+.distinction-current .badge-label{font-size:16px;font-weight:700;display:block}
+.distinction-current .badge-giver{font-size:12px;color:var(--text-muted);margin-top:4px}
+.distinction-current .badge-citation{font-size:13px;color:var(--sand);margin-top:8px;padding:8px;background:rgba(0,0,0,.3);border-radius:var(--radius-sm)}
+.distinction-current .no-badge{font-size:14px;color:var(--text-muted)}
+
+/* ─── ACTION BUTTONS ─── */
+.actions-card{display:flex;flex-direction:column;gap:10px}
+.actions-card .action-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;transition:var(--transition);border:none;min-height:48px;width:100%;font-family:inherit}
+.actions-card .action-btn.primary{background:var(--gold);color:var(--green-dark)}
+.actions-card .action-btn.primary:hover{background:var(--gold-light);transform:translateY(-1px)}
+.actions-card .action-btn.secondary{background:transparent;border:2px solid var(--gold);color:var(--gold)}
+.actions-card .action-btn.secondary:hover{background:var(--gold);color:var(--green-dark)}
+.actions-card .action-btn.danger{background:transparent;border:2px solid var(--danger);color:var(--danger)}
+.actions-card .action-btn.danger:hover{background:var(--danger);color:#fff}
+.actions-card .action-btn.outline{background:transparent;border:2px solid var(--green-light);color:var(--text-muted)}
+.actions-card .action-btn.outline:hover{border-color:var(--sand);color:var(--sand)}
+.actions-card .action-btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+
+/* ─── EVALUATION HISTORY ─── */
+.history-section{margin-top:20px}
+.history-table-wrap{overflow-x:auto;margin-top:8px}
+.history-table{width:100%;border-collapse:collapse;font-size:13px}
+.history-table thead{position:sticky;top:0;z-index:2}
+.history-table th{background:var(--green-dark);color:var(--gold);font-weight:600;padding:10px 8px;text-align:center;border-bottom:2px solid var(--gold-dark);white-space:nowrap;font-size:12px}
+.history-table td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--green-light);color:var(--text)}
+.history-table tr:hover td{background:rgba(212,175,55,.05)}
+.history-table .score-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;min-width:32px}
+.history-table .score-badge.high{background:rgba(40,167,69,.2);color:#4caf50}
+.history-table .score-badge.med{background:rgba(255,193,7,.2);color:#ffc107}
+.history-table .score-badge.low{background:rgba(220,53,69,.2);color:#dc3545}
+.history-table .notes-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12px}
+.history-table .new-row{animation:flashGold 1.5s ease}
+@keyframes flashGold{0%,50%{background:rgba(212,175,55,.2)}100%{background:transparent}}
+
+/* ─── EMPTY / ERROR STATES ─── */
+.empty-state{text-align:center;padding:32px 16px;color:var(--text-muted)}
+.empty-state i{font-size:40px;display:block;margin-bottom:12px;color:var(--green-light)}
+.empty-state p{font-size:14px}
+.error-state{text-align:center;padding:40px 16px}
+.error-state i{font-size:48px;color:var(--danger);margin-bottom:12px}
+.error-state h3{color:var(--danger);margin-bottom:8px}
+.error-state p{color:var(--text-muted);margin-bottom:16px}
+.error-state .retry-btn{padding:10px 24px;background:var(--gold);color:var(--green-dark);border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-size:14px;font-family:inherit}
+
+/* ─── MODAL ─── */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:1000;justify-content:center;align-items:center;animation:fadeIn .2s ease;padding:16px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--green-card);border:1px solid var(--green-light);border-radius:var(--radius);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:28px;animation:slideUp .25s ease;box-shadow:var(--shadow)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--green-light)}
+.modal-header h3{color:var(--gold);font-size:18px;display:flex;align-items:center;gap:8px}
+.modal-header .close-modal{width:36px;height:36px;border-radius:50%;border:none;background:var(--green-dark);color:var(--text-muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);font-family:inherit}
+.modal-header .close-modal:hover{background:var(--danger);color:#fff}
+.modal-body .form-group{margin-bottom:16px}
+.modal-body .form-group label{display:block;font-size:13px;font-weight:600;color:var(--sand);margin-bottom:6px}
+.modal-body .form-group input,.modal-body .form-group select,.modal-body .form-group textarea{width:100%;padding:10px 14px;background:var(--green-dark);border:1px solid var(--green-light);border-radius:var(--radius-sm);color:var(--text);font-size:14px;transition:var(--transition);font-family:inherit;direction:ltr;text-align:left}
+.modal-body .form-group input:focus,.modal-body .form-group select:focus,.modal-body .form-group textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(212,175,55,.2)}
+.modal-body .form-group textarea{min-height:64px;resize:vertical;direction:rtl;text-align:right}
+.modal-body .form-group .range-wrap{display:flex;align-items:center;gap:12px}
+.modal-body .form-group .range-wrap input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:8px;background:var(--green-dark);border-radius:4px;outline:none}
+.modal-body .form-group .range-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid var(--green-dark)}
+.modal-body .form-group .range-wrap input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid var(--green-dark)}
+.modal-body .form-group .range-wrap .range-val{min-width:44px;text-align:center;font-weight:700;font-size:18px;color:var(--gold)}
+.modal-body .form-actions{display:flex;gap:10px;margin-top:20px}
+.modal-body .form-actions button{flex:1;padding:12px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;transition:var(--transition);border:none;min-height:48px;font-family:inherit}
+.modal-body .form-actions .submit-btn{background:var(--gold);color:var(--green-dark)}
+.modal-body .form-actions .submit-btn:hover{background:var(--gold-light)}
+.modal-body .form-actions .cancel-btn{background:var(--green-light);color:var(--text)}
+.modal-body .form-actions .cancel-btn:hover{background:rgba(255,255,255,.1)}
+.modal-body .form-actions .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.modal-body .badge-select{display:flex;gap:10px;flex-direction:column}
+.modal-body .badge-select .badge-option{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--green-dark);border:2px solid var(--green-light);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition)}
+.modal-body .badge-select .badge-option:hover{border-color:var(--gold)}
+.modal-body .badge-select .badge-option.selected{border-color:var(--gold);background:rgba(212,175,55,.1)}
+.modal-body .badge-select .badge-option input[type=radio]{display:none}
+.modal-body .badge-select .badge-option .bo-icon{font-size:28px}
+.modal-body .badge-select .badge-option .bo-text{font-size:14px;font-weight:600}
+.modal-body .badge-select .badge-option .bo-desc{font-size:11px;color:var(--text-muted)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ─── NOTIFICATION HIGHLIGHT ─── */
+.highlight-flash{animation:highlightPulse 2s ease}
+@keyframes highlightPulse{0%,30%{background:rgba(212,175,55,.15);border-color:var(--gold)}100%{background:var(--green-card);border-color:var(--green-light)}}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:767px){
+  .container{padding:10px}
+  .top-bar .page-title{font-size:16px}
+  .top-bar .soldier-id-badge{font-size:11px;padding:4px 10px}
+  .profile-card .avatar-wrap{width:90px;height:90px}
+  .profile-card .avatar-wrap .avatar-fallback{font-size:36px}
+  .profile-card .soldier-name{font-size:20px}
+  .profile-card .info-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .profile-card .info-item{padding:8px 6px}
+  .history-table{font-size:12px}
+  .history-table th,.history-table td{padding:6px 4px}
+  .history-table .notes-cell{max-width:80px}
+  .main-grid{gap:14px}
+  .modal{padding:20px 16px}
+  .modal-body .form-group .range-wrap input[type=range]{height:6px}
+}
+@media(min-width:768px)and(max-width:1023px){
+  .main-grid{grid-template-columns:1fr 1fr}
+  .main-grid .history-section{grid-column:1/-1}
+}
+@media print{
+  body{background:#fff;color:#000}
+  .top-bar .back-btn,.actions-card,.modal-overlay{display:none!important}
+  .card{background:#fff;border-color:#ccc;box-shadow:none;break-inside:avoid}
+  .card-title{color:#1e2a1e}
+  .profile-card .avatar-wrap{border-color:#1e2a1e}
+  .profile-card .soldier-rank{color:#b8962e}
+  .scores-card .score-header .score-val{color:#b8962e}
+  .progress-bar-wrap{background:#eee;border:1px solid #ccc}
+  .progress-bar-wrap .fill{background:#b8962e!important}
+  .distinction-current.gold{border-color:#b8962e;background:#fffaf0}
+  .distinction-current.silver{border-color:#999;background:#f8f8f8}
+  .distinction-current.bronze{border-color:#cd7f32;background:#fff5f0}
+  .history-table th{background:#eee;color:#000;border-bottom-color:#999}
+  .history-table td{border-bottom-color:#ddd}
+  .history-table .score-badge.high{background:#e8f5e9;color:#2e7d32}
+  .history-table .score-badge.med{background:#fff8e1;color:#f57f17}
+  .history-table .score-badge.low{background:#ffebee;color:#c62828}
+  .container{padding:0}
+  .top-bar{border-bottom-color:#ccc}
+  .top-bar .page-title{color:#1e2a1e}
+  .top-bar .soldier-id-badge{background:#eee;color:#666;border-color:#ccc}
+}
+@media(max-width:480px){
+  .info-grid{grid-template-columns:1fr 1fr!important}
+  .profile-card .info-item .value{font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <button class="back-btn" onclick="goBack()"><i class="fas fa-arrow-right"></i> العودة إلى لوحة التحكم</button>
+    <span class="page-title"><i class="fas fa-id-card"></i> ملف الجندي</span>
+    <span class="soldier-id-badge" id="topBadge"><i class="fas fa-barcode"></i> <span id="topBadgeId">...</span></span>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div class="error-state" id="errorState" style="display:none">
+    <i class="fas fa-exclamation-triangle"></i>
+    <h3>فشل تحميل بيانات الجندي</h3>
+    <p id="errorMsg">تعذر الاتصال بالخادم</p>
+    <button class="retry-btn" onclick="loadProfile()"><i class="fas fa-redo"></i> إعادة المحاولة</button>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid" id="mainGrid" style="display:none">
+
+    <!-- COLUMN 1: PROFILE CARD -->
+    <div class="card profile-card" id="profileCard">
+      <div class="skeleton" style="width:90px;height:90px;border-radius:50%;margin:0 auto 16px"></div>
+      <div class="skeleton" style="width:60%;margin:0 auto 8px;height:24px"></div>
+      <div class="skeleton" style="width:40%;margin:0 auto 12px;height:18px"></div>
+      <div class="skeleton" style="width:100%;height:80px;margin-top:12px"></div>
+    </div>
+
+    <!-- COLUMN 2: SCORES + HISTORY -->
+    <div>
+      <!-- SCORES CARD -->
+      <div class="card scores-card" id="scoresCard">
+        <div class="card-title"><i class="fas fa-chart-line"></i> نتائج التقييم</div>
+        <div class="skeleton" style="width:100%;height:24px;margin-bottom:16px"></div>
+        <div class="skeleton" style="width:100%;height:24px;margin-bottom:16px"></div>
+        <div class="skeleton" style="width:100%;height:24px;margin-bottom:16px"></div>
+        <div class="skeleton" style="width:100%;height:24px;margin-bottom:8px"></div>
+      </div>
+
+      <!-- HISTORY CARD -->
+      <div class="card history-section" id="historyCard" style="margin-top:20px">
+        <div class="card-title"><i class="fas fa-history"></i> سجل التقييمات</div>
+        <div class="skeleton" style="width:100%;height:40px;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:100%;height:32px;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:100%;height:32px;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:100%;height:32px;margin-bottom:8px"></div>
+      </div>
+    </div>
+
+    <!-- COLUMN 3: ACTIONS + DISTINCTIONS -->
+    <div>
+      <!-- ACTIONS -->
+      <div class="card actions-card" id="actionsCard">
+        <div class="skeleton" style="width:100%;height:48px;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:100%;height:48px;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:100%;height:48px"></div>
+      </div>
+      <!-- DISTINCTIONS -->
+      <div class="card" id="distinctionCard" style="margin-top:20px">
+        <div class="card-title"><i class="fas fa-medal"></i> الأوسمة</div>
+        <div class="skeleton" style="width:100%;height:80px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EVALUATE MODAL -->
+<div class="modal-overlay" id="evaluateModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fas fa-clipboard-check"></i> تقييم الجندي</h3>
+      <button class="close-modal" onclick="closeModal('evaluateModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>اللياقة البدنية (0-100)</label>
+        <div class="range-wrap">
+          <input type="range" id="evalFitness" min="0" max="100" value="50" oninput="updateRangeVal(this,'evalFitnessVal')">
+          <span class="range-val" id="evalFitnessVal">50</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>اختبار التخصص (0-100)</label>
+        <div class="range-wrap">
+          <input type="range" id="evalSpecialty" min="0" max="100" value="50" oninput="updateRangeVal(this,'evalSpecialtyVal')">
+          <span class="range-val" id="evalSpecialtyVal">50</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>الانضباط العام (0-100)</label>
+        <div class="range-wrap">
+          <input type="range" id="evalDiscipline" min="0" max="100" value="50" oninput="updateRangeVal(this,'evalDisciplineVal')">
+          <span class="range-val" id="evalDisciplineVal">50</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ملاحظات (اختياري)</label>
+        <textarea id="evalNotes" placeholder="أي ملاحظات إضافية..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="cancel-btn" onclick="closeModal('evaluateModal')">إلغاء</button>
+        <button class="submit-btn" id="evalSubmitBtn" onclick="submitEvaluation()"><i class="fas fa-save"></i> حفظ التقييم</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DISTINGUISH MODAL -->
+<div class="modal-overlay" id="distinguishModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fas fa-medal"></i> منح وسام</h3>
+      <button class="close-modal" onclick="closeModal('distinguishModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>نوع الوسام</label>
+        <div class="badge-select" id="badgeSelect">
+          <label class="badge-option" data-value="gold" onclick="selectBadge(this)">
+            <input type="radio" name="badgeType" value="gold">
+            <span class="bo-icon">🥇</span>
+            <div><div class="bo-text">وسام ذهبي</div><div class="bo-desc">أعلى تكريم للتميز الاستثنائي</div></div>
+          </label>
+          <label class="badge-option" data-value="silver" onclick="selectBadge(this)">
+            <input type="radio" name="badgeType" value="silver">
+            <span class="bo-icon">🥈</span>
+            <div><div class="bo-text">وسام فضي</div><div class="bo-desc">تكريم للأداء المتميز</div></div>
+          </label>
+          <label class="badge-option" data-value="bronze" onclick="selectBadge(this)">
+            <input type="radio" name="badgeType" value="bronze">
+            <span class="bo-icon">🥉</span>
+            <div><div class="bo-text">وسام برونزي</div><div class="bo-desc">تكريم للأداء الجيد</div></div>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>سبب المنح</label>
+        <textarea id="distinctionCitation" placeholder="اكتب سبب منح الوسام..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="cancel-btn" onclick="closeModal('distinguishModal')">إلغاء</button>
+        <button class="submit-btn" id="distinguishSubmitBtn" onclick="submitDistinguish()"><i class="fas fa-award"></i> منح الوسام</button>
+      </div>
+      <div id="removeDistinctionArea" style="margin-top:16px;display:none">
+        <hr style="border-color:var(--green-light);margin:16px 0">
+        <button class="action-btn danger" style="width:100%" onclick="removeDistinction()"><i class="fas fa-trash-alt"></i> إزالة الوسام الحالي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+const API_BASE = (()=>{
+  const m = window.location.search.match(/[?&]api=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : '/api';
+})();
+let soldierId = null;
+let soldierData = null;
+let evaluations = [];
+let currentUser = null;
+let newEvalId = null;
+
+// ─── HELPERS ───
+function $(id){return document.getElementById(id)}
+function getToken(){try{return localStorage.getItem('b20_token')}catch{return null}}
+function apiHeaders(){const t=getToken();return{'Content-Type':'application/json',...(t?{Authorization:'Bearer '+t}:{})}}
+async function apiFetch(path,opts={}){
+  const r=await fetch(API_BASE+path,{...opts,headers:{...apiHeaders(),...opts.headers}});
+  if(!r.ok){const e=await r.json().catch(()=>({error:r.statusText}));throw new Error(e.error||'خطأ في الاتصال')}
+  return r.json();
+}
+function updateRangeVal(el,id){document.getElementById(id).textContent=el.value}
+
+// ─── INIT ───
+function init(){
+  const params=new URLSearchParams(window.location.search);
+  soldierId=params.get('id');
+  if(!soldierId){showError('معرف الجندي غير موجود');return}
+  $('topBadgeId').textContent=soldierId.slice(0,8)+'…';
+  // Check for highlight from notification
+  newEvalId=params.get('new_eval')||null;
+  loadProfile();
+}
+document.addEventListener('DOMContentLoaded',init);
+
+// ─── LOAD PROFILE ───
+async function loadProfile(){
+  $('errorState').style.display='none';
+  $('mainGrid').style.display='grid';
+  // show skeletons
+  try{
+    const [soldier,resultsData,userData]=await Promise.all([
+      apiFetch('/soldiers/'+soldierId),
+      apiFetch('/results?soldierId='+soldierId+'&limit=100'),
+      apiFetch('/auth/me').catch(()=>null),
+    ]);
+    soldierData=soldier;
+    evaluations=resultsData.results||[];
+    currentUser=userData;
+    // cache to localStorage
+    try{
+      localStorage.setItem('soldier_'+soldierId,JSON.stringify({soldier,evaluations:evaluations,ts:Date.now()}));
+    }catch{}
+    renderAll();
+  }catch(e){
+    // try loading from cache
+    try{
+      const cached=JSON.parse(localStorage.getItem('soldier_'+soldierId));
+      if(cached&&cached.soldier){
+        soldierData=cached.soldier;evaluations=cached.evaluations||[];
+        renderAll();return;
+      }
+    }catch{}
+    showError(e.message);
+  }
+}
+
+function showError(msg){
+  $('mainGrid').style.display='none';
+  $('errorState').style.display='block';
+  $('errorMsg').textContent=msg;
+}
+
+// ─── RENDER ───
+function renderAll(){
+  renderProfile();
+  renderScores();
+  renderDistinction();
+  renderActions();
+  renderHistory();
+  $('topBadgeId').textContent=soldierData.military_id||soldierData.id.slice(0,8)+'…';
+}
+
+function getBadgeInfo(s){
+  if(!s||!s.distinction_badge) return null;
+  const b=s.distinction_badge;
+  const icons={gold:'🥇',silver:'🥈',bronze:'🥉'};
+  const labels={gold:'وسام ذهبي',silver:'وسام فضي',bronze:'وسام برونزي'};
+  return {type:b,icon:icons[b]||'🏅',label:labels[b]||b};
+}
+
+function renderProfile(){
+  const s=soldierData;
+  const b=getBadgeInfo(s);
+  const initials=(s.name||'جندي').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()||'ج';
+  $('profileCard').innerHTML=`
+    <div class="avatar-wrap">
+      ${b?`<div class="distinction-badge-top">${b.icon}</div>`:''}
+      <div class="avatar-fallback">${initials}</div>
+    </div>
+    <div class="soldier-name">${s.name||'—'}</div>
+    <div class="soldier-rank"><i class="fas fa-chevron-circle-up"></i> ${s.rank_name||'بدون رتبة'}</div>
+    <div class="info-grid">
+      <div class="info-item"><span class="label">السلاح</span><span class="value">${s.weapon_name||'—'} ${s.weapon_icon||''}</span></div>
+      <div class="info-item"><span class="label">التخصص العام</span><span class="value">${s.specialty_name||'—'}</span></div>
+      <div class="info-item"><span class="label">التخصص الخاص</span><span class="value">${s.specific_specialty||'—'}</span></div>
+      <div class="info-item"><span class="label">الرقم العسكري</span><span class="value">${s.military_id||'—'}</span></div>
+    </div>
+    ${s.notes?`<div class="notes-section"><span class="label"><i class="fas fa-sticky-note"></i> ملاحظات</span><div class="value">${s.notes}</div></div>`:''}
+  `;
+}
+
+function renderScores(){
+  const evals=evaluations;
+  if(!evals||evals.length===0){
+    $('scoresCard').innerHTML=`
+      <div class="card-title"><i class="fas fa-chart-line"></i> نتائج التقييم</div>
+      <div class="no-scores">
+        <i class="fas fa-clipboard-list"></i>
+        <p>لا توجد تقييمات مسجلة بعد</p>
+      </div>
+    `;
+    return;
+  }
+  // latest evaluation for current scores
+  const latest=evals[0];
+  const fs=latest.fitness_score,ss=latest.specialty_score,ds=latest.discipline_score;
+  const total=latest.total_score!=null?latest.total_score:(
+    [fs,ss,ds].every(s=>s!=null)?Math.round((Number(fs)+Number(ss)+Number(ds))/3):null
+  );
+  const scorePct=v=>Math.min(100,Math.max(0,Number(v)||0));
+  const scoreClass=v=>{const n=Number(v);return n>=70?'high':n>=40?'med':'low'};
+  const dateStr=latest.created_at?new Date(latest.created_at).toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'}):'—';
+  $('scoresCard').innerHTML=`
+    <div class="card-title"><i class="fas fa-chart-line"></i> نتائج التقييم</div>
+    <div class="score-item">
+      <div class="score-header"><span class="score-label"><i class="fas fa-running"></i> اللياقة البدنية</span><span class="score-val">${fs!=null?fs+'/100':'—'}</span></div>
+      <div class="progress-bar-wrap"><div class="fill fitness" style="width:${scorePct(fs)}%"></div></div>
+    </div>
+    <div class="score-item">
+      <div class="score-header"><span class="score-label"><i class="fas fa-crosshairs"></i> اختبار التخصص</span><span class="score-val">${ss!=null?ss+'/100':'—'}</span></div>
+      <div class="progress-bar-wrap"><div class="fill specialty" style="width:${scorePct(ss)}%"></div></div>
+    </div>
+    <div class="score-item">
+      <div class="score-header"><span class="score-label"><i class="fas fa-balance-scale"></i> الانضباط العام</span><span class="score-val">${ds!=null?ds+'/100':'—'}</span></div>
+      <div class="progress-bar-wrap"><div class="fill discipline" style="width:${scorePct(ds)}%"></div></div>
+    </div>
+    <div class="score-item">
+      <div class="score-header"><span class="score-label" style="font-weight:700"><i class="fas fa-star"></i> المجموع الكلي</span><span class="score-val" style="font-size:18px">${total!=null?total+'/100':'—'}</span></div>
+      <div class="progress-bar-wrap"><div class="fill total" style="width:${scorePct(total)}%"></div></div>
+    </div>
+    <div class="last-eval-info">
+      <span><i class="far fa-calendar-alt"></i> ${dateStr}</span>
+      <span><i class="fas fa-user-check"></i> ${latest.entered_by_name||'غير معروف'}</span>
+    </div>
+  `;
+}
+
+function renderDistinction(){
+  const s=soldierData;
+  const b=getBadgeInfo(s);
+  const wrap=$('distinctionCard');
+  if(!b){
+    wrap.innerHTML=`
+      <div class="card-title"><i class="fas fa-medal"></i> الأوسمة</div>
+      <div class="distinction-current none">
+        <div class="no-badge"><i class="fas fa-ribbon" style="font-size:32px;display:block;margin-bottom:8px;color:var(--green-light)"></i>لم يحصل على أوسمة بعد</div>
+      </div>
+    `;
+    return;
+  }
+  const dateStr=s.distinguished_at?new Date(s.distinguished_at).toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'}):'';
+  wrap.innerHTML=`
+    <div class="card-title"><i class="fas fa-medal"></i> الأوسمة</div>
+    <div class="distinction-current ${b.type}">
+      <span class="badge-icon">${b.icon}</span>
+      <span class="badge-label">${b.label}</span>
+      ${s.distinguished_by_name?`<span class="badge-giver"><i class="fas fa-user-tie"></i> بوساطة: ${s.distinguished_by_name}</span>`:''}
+      ${dateStr?`<span class="badge-giver"><i class="far fa-calendar-alt"></i> ${dateStr}</span>`:''}
+      ${s.distinction_citation?`<div class="badge-citation"><i class="fas fa-quote-right"></i> ${s.distinction_citation}</div>`:''}
+    </div>
+  `;
+}
+
+function renderActions(){
+  const isCommander=currentUser&&(currentUser.role==='commander'||currentUser.role==='قائد');
+  $('actionsCard').innerHTML=`
+    <div class="card-title"><i class="fas fa-tasks"></i> إجراءات القائد</div>
+    ${isCommander?`
+      <button class="action-btn primary" onclick="openEvaluateModal()"><i class="fas fa-clipboard-check"></i> تقييم الجندي</button>
+      <button class="action-btn secondary" onclick="openDistinguishModal()"><i class="fas fa-award"></i> منح وسام</button>
+    `:`
+      <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:12px"><i class="fas fa-lock"></i> صلاحيات القائد فقط</p>
+    `}
+    <button class="action-btn outline" onclick="window.print()"><i class="fas fa-print"></i> طباعة الملف</button>
+  `;
+}
+
+function renderHistory(){
+  const wrap=$('historyCard');
+  const evals=evaluations;
+  if(!evals||evals.length===0){
+    wrap.innerHTML=`
+      <div class="card-title"><i class="fas fa-history"></i> سجل التقييمات</div>
+      <div class="empty-state">
+        <i class="fas fa-clipboard-list"></i>
+        <p>لا توجد تقييمات مسجلة بعد</p>
+      </div>
+    `;
+    return;
+  }
+  const scoreClass=v=>{const n=Number(v);return n>=70?'high':n>=40?'med':'low'};
+  const rows=evals.map((e,i)=>{
+    const cls=i===0&&newEvalId?'new-row':'';
+    const date=new Date(e.created_at).toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'});
+    const total=e.total_score!=null?e.total_score:(
+      [e.fitness_score,e.specialty_score,e.discipline_score].every(s=>s!=null)?
+        Math.round((Number(e.fitness_score)+Number(e.specialty_score)+Number(e.discipline_score))/3):'—'
+    );
+    return `<tr class="${cls}">
+      <td>${date}</td>
+      <td>${e.entered_by_name||'—'}</td>
+      <td><span class="score-badge ${scoreClass(e.fitness_score)}">${e.fitness_score!=null?e.fitness_score:'—'}</span></td>
+      <td><span class="score-badge ${scoreClass(e.specialty_score)}">${e.specialty_score!=null?e.specialty_score:'—'}</span></td>
+      <td><span class="score-badge ${scoreClass(e.discipline_score)}">${e.discipline_score!=null?e.discipline_score:'—'}</span></td>
+      <td><strong>${total}</strong></td>
+      <td class="notes-cell" title="${e.notes||''}">${e.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`
+    <div class="card-title"><i class="fas fa-history"></i> سجل التقييمات <span style="font-size:12px;color:var(--text-muted);font-weight:400">(${evals.length})</span></div>
+    <div class="history-table-wrap">
+      <table class="history-table">
+        <thead><tr>
+          <th>التاريخ</th><th>المقيم</th><th>لياقة</th><th>تخصص</th><th>انضباط</th><th>المجموع</th><th>ملاحظات</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── EVALUATE ───
+function openEvaluateModal(){
+  if(!soldierId) return;
+  $('evalFitness').value=50;$('evalSpecialty').value=50;$('evalDiscipline').value=50;
+  $('evalFitnessVal').textContent=50;$('evalSpecialtyVal').textContent=50;$('evalDisciplineVal').textContent=50;
+  $('evalNotes').value='';
+  $('evalSubmitBtn').disabled=false;$('evalSubmitBtn').innerHTML='<i class="fas fa-save"></i> حفظ التقييم';
+  openModal('evaluateModal');
+}
+
+async function submitEvaluation(){
+  const btn=$('evalSubmitBtn');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+  try{
+    const body={
+      fitnessScore:Number($('evalFitness').value),
+      specialtyScore:Number($('evalSpecialty').value),
+      disciplineScore:Number($('evalDiscipline').value),
+      notes:$('evalNotes').value.trim()||null,
+    };
+    const result=await apiFetch('/soldiers/'+soldierId+'/evaluate',{method:'POST',body:JSON.stringify(body)});
+    closeModal('evaluateModal');
+    newEvalId=result.id;
+    // refresh data
+    const [soldier,resultsData]=await Promise.all([
+      apiFetch('/soldiers/'+soldierId),
+      apiFetch('/results?soldierId='+soldierId+'&limit=100'),
+    ]);
+    soldierData=soldier;evaluations=resultsData.results||[];
+    try{localStorage.setItem('soldier_'+soldierId,JSON.stringify({soldier,evaluations,ts:Date.now()}))}catch{}
+    renderAll();
+  }catch(e){
+    alert('فشل حفظ التقييم: '+e.message);
+  }
+  btn.disabled=false;btn.innerHTML='<i class="fas fa-save"></i> حفظ التقييم';
+}
+
+// ─── DISTINGUISH ───
+function openDistinguishModal(){
+  if(!soldierId) return;
+  // reset
+  document.querySelectorAll('.badge-option').forEach(el=>el.classList.remove('selected'));
+  $('distinctionCitation').value='';
+  $('distinguishSubmitBtn').innerHTML='<i class="fas fa-award"></i> منح الوسام';
+  $('distinguishSubmitBtn').disabled=false;
+  // show remove area if already distinguished
+  const b=soldierData&&soldierData.distinction_badge;
+  $('removeDistinctionArea').style.display=b?'block':'none';
+  openModal('distinguishModal');
+}
+
+function selectBadge(el){
+  document.querySelectorAll('.badge-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input[type=radio]').checked=true;
+}
+
+async function submitDistinguish(){
+  const selected=document.querySelector('.badge-option.selected');
+  if(!selected){alert('يرجى اختيار نوع الوسام');return;}
+  const badge=selected.dataset.value;
+  const citation=$('distinctionCitation').value.trim()||null;
+  const btn=$('distinguishSubmitBtn');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري المنح...';
+  try{
+    const result=await apiFetch('/soldiers/'+soldierId+'/distinguish',{method:'POST',body:JSON.stringify({badge,citation})});
+    closeModal('distinguishModal');
+    soldierData=result;
+    try{
+      const cached=JSON.parse(localStorage.getItem('soldier_'+soldierId)||'{}');
+      cached.soldier=result;localStorage.setItem('soldier_'+soldierId,JSON.stringify(cached));
+    }catch{}
+    renderAll();
+  }catch(e){
+    alert('فشل منح الوسام: '+e.message);
+  }
+  btn.disabled=false;btn.innerHTML='<i class="fas fa-award"></i> منح الوسام';
+}
+
+async function removeDistinction(){
+  if(!confirm('هل أنت متأكد من إزالة الوسام الحالي؟')) return;
+  const btn=$('distinguishSubmitBtn');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري الإزالة...';
+  try{
+    const result=await apiFetch('/soldiers/'+soldierId+'/distinguish',{method:'DELETE'});
+    closeModal('distinguishModal');
+    soldierData=result;
+    try{
+      const cached=JSON.parse(localStorage.getItem('soldier_'+soldierId)||'{}');
+      cached.soldier=result;localStorage.setItem('soldier_'+soldierId,JSON.stringify(cached));
+    }catch{}
+    renderAll();
+  }catch(e){
+    alert('فشل إزالة الوسام: '+e.message);
+  }
+  btn.disabled=false;btn.innerHTML='<i class="fas fa-award"></i> منح الوسام';
+}
+
+// ─── MODALS ───
+function openModal(id){$('evaluateModal').classList.remove('active');$('distinguishModal').classList.remove('active');$(id).classList.add('active');}
+function closeModal(id){$(id).classList.remove('active')}
+// close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active')});
+});
+// ESC key
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay.active').forEach(el=>el.classList.remove('active'));
+  }
+});
+
+// ─── BACK ───
+function goBack(){
+  if(document.referrer&&document.referrer.includes(window.location.host)){
+    window.history.back();
+  }else{
+    window.location.href='/dashboard/';
+  }
+}
+
+// ─── KEYBOARD SUPPORT ───
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay.active').forEach(el=>el.classList.remove('active'));
+  }
+});
+</script>
+</body>
+</html>
