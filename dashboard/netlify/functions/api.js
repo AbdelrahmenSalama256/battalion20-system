@@ -15,7 +15,7 @@ const pool = new Pool({
 });
 const db = { query: (text, params) => pool.query(text, params), pool };
 
-(async()=>{try{
+async function runMigrations(){
   await pool.query('SELECT 1'); console.log('DB connected');
   await pool.query("ALTER TABLE soldiers ADD COLUMN IF NOT EXISTS specific_specialty VARCHAR(200)");
   await pool.query("ALTER TABLE soldiers ADD COLUMN IF NOT EXISTS distinction_badge VARCHAR(10)");
@@ -30,7 +30,7 @@ const db = { query: (text, params) => pool.query(text, params), pool };
   try{await pool.query("ALTER TABLE users ADD CONSTRAINT fk_user_rank FOREIGN KEY(rank_id) REFERENCES ranks(id) ON DELETE SET NULL")}catch(e){}
   await pool.query("CREATE TABLE IF NOT EXISTS notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), type VARCHAR(50) DEFAULT 'evaluation', message TEXT, evaluator_id UUID REFERENCES users(id) ON DELETE SET NULL, evaluator_name VARCHAR(120), evaluator_rank VARCHAR(80), evaluator_weapon VARCHAR(100), evaluated_id UUID REFERENCES soldiers(id) ON DELETE CASCADE, evaluated_name VARCHAR(150), evaluated_rank VARCHAR(80), evaluated_specialty VARCHAR(100), fitness_score NUMERIC(6,2), specialty_score NUMERIC(6,2), discipline_score NUMERIC(6,2), total_score NUMERIC(6,2), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())");
   console.log('Migrations done');
-}catch(e){console.error('Migration:',e.message)}})();
+}
 
 function auth(req,res,next){
   const h=req.headers.authorization;
@@ -43,6 +43,15 @@ function commanderOnly(req,res,next){
   next();
 }
 function cn(v){return v!=null&&!isNaN(v)?Number(v):null}
+async function canEvaluate(userId,soldierId){
+  const u=await db.query('SELECT rank_id FROM users WHERE id=$1',[userId]);
+  const s=await db.query('SELECT rank_id FROM soldiers WHERE id=$1',[soldierId]);
+  if(!u.rows.length||!s.rows.length||!u.rows[0].rank_id||!s.rows[0].rank_id)return false;
+  const ur=await db.query('SELECT sort_order FROM ranks WHERE id=$1',[u.rows[0].rank_id]);
+  const sr=await db.query('SELECT sort_order FROM ranks WHERE id=$1',[s.rows[0].rank_id]);
+  if(!ur.rows.length||!sr.rows.length)return false;
+  return ur.rows[0].sort_order>sr.rows[0].sort_order;
+}
 
 const app=express();
 app.use(helmet());
@@ -431,4 +440,12 @@ app.use((err,req,res,next)=>{
   console.error('Unhandled:',err);
   res.status(500).json({error:'حدث خطأ غير متوقع'});
 });
-exports.handler=serverless(app);
+
+let cachedHandler;
+exports.handler = async (event, context) => {
+  if (!cachedHandler) {
+    try { await runMigrations(); } catch(e) { console.error('Migration:', e.message); }
+    cachedHandler = serverless(app);
+  }
+  return cachedHandler(event, context);
+};
