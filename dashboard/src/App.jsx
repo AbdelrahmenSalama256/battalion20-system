@@ -19,7 +19,7 @@ export default function App(){
   const load=useCallback(async()=>{
     setLoading(true);
     try{
-      const[s,sold,ex,res,wp,sp,rt,rk,ann,notif]=await Promise.all([
+      const[s,sold,ex,res,wp,sp,rt,rk,ann,notif,us]=await Promise.all([
         api.getStats().catch(()=>null),
         api.getSoldiers({}).catch(()=>[]),
         api.getExams({}).catch(()=>[]),
@@ -30,8 +30,9 @@ export default function App(){
         api.getRanks().catch(()=>[]),
         api.getAnnouncements().catch(()=>[]),
         api.getNotifications().catch(()=>[]),
+        api.getUsers().catch(()=>[]),
       ]);
-      setData({stats:s,soldiers:sold,exams:ex,results:res.results||[],weapons:wp,specialties:sp,rankTypes:rt,ranks:rk,announcements:ann,users:[],notifications:notif});
+      setData({stats:s,soldiers:sold,exams:ex,results:res.results||[],weapons:wp,specialties:sp,rankTypes:rt,ranks:rk,announcements:ann,users:us,notifications:notif});
     }catch(e){console.error(e)}
     setLoading(false);
   },[]);
@@ -116,6 +117,8 @@ export default function App(){
         {tab==='notifications'&&<NotificationPage notifications={data.notifications} onMarkRead={markRead} onMarkAll={markAllRead}
           onSoldierClick={id=>{const s=data.soldiers.find(x=>x.id===id);if(s)setSelectedSoldier(s)}}/>}
         {tab==='announcements'&&<AnnouncementsPage announcements={data.announcements} onRefresh={load} user={u}/>}
+        {tab==='users'&&<UsersPage users={data.users} ranks={data.ranks} onRefresh={load} user={u}/>}
+        {tab==='settings'&&<SettingsPage weapons={data.weapons} specialties={data.specialties} ranks={data.ranks} rankTypes={data.rankTypes} onRefresh={load} user={u}/>}
       </div>
       {selectedSoldier&&<SoldierProfile soldier={selectedSoldier} onClose={()=>setSelectedSoldier(null)} onDistinguish={s=>{setDistinguishModal(s);setSelectedSoldier(null)}} onRemoveDistinction={removeDistinction} user={u} ranks={data.ranks} weapons={data.weapons} specialties={data.specialties}/>}
       {distinguishModal&&<DistinguishModal soldier={distinguishModal} onClose={()=>setDistinguishModal(null)} onConfirm={handleDistinguish}/>}
@@ -147,6 +150,8 @@ function Sidebar({tab,onTab,user,onLogout,unread,onNotif}){
     {id:'results',label:'النتائج',icon:'🏆'},
     {id:'notifications',label:'الإشعارات',icon:'🔔',badge:unread},
     {id:'announcements',label:'الإعلانات',icon:'📢'},
+    {id:'users',label:'المستخدمين',icon:'👤'},
+    {id:'settings',label:'الإعدادات',icon:'⚙️'},
   ];
   return(<>
     <button className="d-md-none btn btn-outline-gold position-fixed" style={{top:10,right:10,zIndex:1020}} onClick={()=>setOpen(o=>!o)}>☰</button>
@@ -426,6 +431,99 @@ function DistinguishModal({soldier,onClose,onConfirm}){
     <div className="d-flex gap-2 mb-3">{['gold','silver','bronze'].map(b=><button key={b} onClick={()=>setBadge(b)} className={`btn flex-grow-1 ${badge===b?'btn-gold':'btn-outline-secondary'}`}>{b==='gold'?'🥇':b==='silver'?'🥈':'🥉'} {b==='gold'?'ذهبي':b==='silver'?'فضي':'برونزي'}</button>)}</div>
     <textarea placeholder="سبب التمييز (مثال: أداء متميز في الرماية)" value={citation} onChange={e=>setCitation(e.target.value)} rows={3} className="form-control bg-card text-light border-military mb-3"/>
     <div className="d-flex gap-2"><button onClick={()=>onConfirm(s.id,badge,citation)} className="btn btn-gold flex-grow-1">تأكيد</button><button onClick={onClose} className="btn btn-outline-secondary flex-grow-1">إلغاء</button></div>
+  </Modal>);
+}
+
+function SettingsPage({weapons,specialties,ranks,rankTypes,onRefresh,user}){
+  const[stab,setStab]=useState('weapons');
+  return(<div>
+    <div className="d-flex justify-content-between align-items-center mb-3"><h4 className="text-gold mb-0">الإعدادات</h4></div>
+    <ul className="nav nav-tabs border-military mb-3">
+      <li className="nav-item"><button className={`nav-link ${stab==='weapons'?'active':''} text-muted-military`} onClick={()=>setStab('weapons')}>الأسلحة</button></li>
+      <li className="nav-item"><button className={`nav-link ${stab==='specialties'?'active':''} text-muted-military`} onClick={()=>setStab('specialties')}>التخصصات</button></li>
+      <li className="nav-item"><button className={`nav-link ${stab==='ranks'?'active':''} text-muted-military`} onClick={()=>setStab('ranks')}>الرتب والرتب العسكرية</button></li>
+    </ul>
+    {stab==='weapons'&&<WeaponsSettings weapons={weapons} onRefresh={onRefresh} user={user}/>}
+    {stab==='specialties'&&<SpecialtiesSettings specialties={specialties} weapons={weapons} onRefresh={onRefresh} user={user}/>}
+    {stab==='ranks'&&<RanksSettings ranks={ranks} rankTypes={rankTypes} onRefresh={onRefresh} user={user}/>}
+  </div>);
+}
+function WeaponsSettings({weapons,onRefresh,user}){
+  const[newName,setNewName]=useState('');const[newIcon,setNewIcon]=useState('');
+  async function add(){if(!newName)return;try{await api.createWeapon({name:newName,icon:newIcon||null});setNewName('');setNewIcon('');onRefresh()}catch(e){alert(e.message)}}
+  async function del(id){if(!confirm('حذف السلاح؟'))return;try{await api.deleteWeapon(id);onRefresh()}catch(e){alert(e.message)}}
+  return(<div className="card border-military p-3">
+    <h6 className="text-gold mb-2">الأسلحة</h6>
+    {user?.role==='commander'&&<div className="d-flex gap-2 mb-3">
+      <input placeholder="اسم السلاح" value={newName} onChange={e=>setNewName(e.target.value)} className="form-control bg-card text-light border-military" style={{maxWidth:200}}/>
+      <input placeholder="أيقونة" value={newIcon} onChange={e=>setNewIcon(e.target.value)} className="form-control bg-card text-light border-military" style={{maxWidth:80}}/>
+      <button onClick={add} className="btn btn-gold btn-sm">إضافة</button>
+    </div>}
+    <div className="list-group">{weapons.map(w=><div key={w.id} className="list-group-item bg-card border-military d-flex justify-content-between align-items-center"><span>{w.icon||'⚔️'} {w.name}</span>{user?.role==='commander'&&<button onClick={()=>del(w.id)} className="btn btn-sm btn-outline-danger py-0">✕</button>}</div>)}
+      {weapons.length===0&&<p className="text-muted-military small mb-0">لا توجد أسلحة</p>}
+    </div>
+  </div>);
+}
+function SpecialtiesSettings({specialties,weapons,onRefresh,user}){
+  const[newName,setNewName]=useState('');const[weaponId,setWeaponId]=useState('');
+  async function add(){if(!newName||!weaponId)return;try{await api.createSpecialty({name:newName,weaponId});setNewName('');onRefresh()}catch(e){alert(e.message)}}
+  async function del(id){if(!confirm('حذف التخصص؟'))return;try{await api.deleteSpecialty(id);onRefresh()}catch(e){alert(e.message)}}
+  const filtered=weaponId?specialties.filter(s=>s.weapon_id===weaponId):specialties;
+  return(<div className="card border-military p-3">
+    <h6 className="text-gold mb-2">التخصصات</h6>
+    {user?.role==='commander'&&<div className="d-flex gap-2 mb-3 flex-wrap">
+      <select value={weaponId} onChange={e=>setWeaponId(e.target.value)} className="form-select bg-card text-light border-military" style={{maxWidth:160}}><option value="">كل الأسلحة</option>{weapons.map(w=><option key={w.id} value={w.id}>{w.icon||'⚔️'} {w.name}</option>)}</select>
+      <input placeholder="اسم التخصص" value={newName} onChange={e=>setNewName(e.target.value)} className="form-control bg-card text-light border-military" style={{maxWidth:200}}/>
+      <button onClick={add} className="btn btn-gold btn-sm" disabled={!weaponId}>إضافة</button>
+    </div>}
+    <div className="list-group">{filtered.map(s=><div key={s.id} className="list-group-item bg-card border-military d-flex justify-content-between align-items-center"><span>{s.name}</span>{user?.role==='commander'&&<button onClick={()=>del(s.id)} className="btn btn-sm btn-outline-danger py-0">✕</button>}</div>)}
+      {filtered.length===0&&<p className="text-muted-military small mb-0">لا توجد تخصصات</p>}
+    </div>
+  </div>);
+}
+function RanksSettings({ranks,rankTypes,onRefresh,user}){
+  return(<div className="card border-military p-3">
+    <h6 className="text-gold mb-2">أنواع الرتب</h6>
+    <div className="table-responsive mb-3"><table className="table table-sm"><thead><tr className="text-gold small"><th>النوع</th><th>الرتب</th></tr></thead><tbody>
+      {rankTypes.map(rt=><tr key={rt.id}><td className="small"><span className="badge px-2 py-1" style={{background:rt.color?`${rt.color}30`:'transparent',color:rt.color||'var(--military-text)'}}>{rt.name}</span></td><td className="small">{ranks.filter(r=>r.type_id===rt.id).sort((a,b)=>a.sort_order-b.sort_order).map(r=>r.name).join(' ← ')}</td></tr>)}
+    </tbody></table></div>
+    <h6 className="text-gold mb-2">جميع الرتب</h6>
+    <div className="table-responsive"><table className="table table-sm"><thead><tr className="text-gold small"><th>الرتبة</th><th>النوع</th><th>ترتيب التقييم</th></tr></thead><tbody>
+      {ranks.sort((a,b)=>a.sort_order-b.sort_order).map(r=><tr key={r.id}><td className="small">{r.name}</td><td className="small">{rankTypes.find(rt=>rt.id===r.type_id)?.name||'-'}</td><td className="small">{r.sort_order}</td></tr>)}
+    </tbody></table></div>
+    <p className="small text-muted-military mb-0">ملاحظة: الرتبة ذات رقم الترتيب الأعلى يمكنها تقييم الرتبة ذات الرقم الأقل. القائد يمكنه تقييم الجميع.</p>
+  </div>);
+}
+function UsersPage({users,ranks,onRefresh,user}){
+  const[showForm,setShowForm]=useState(false);
+  return(<div>
+    <div className="d-flex justify-content-between align-items-center mb-3"><h4 className="text-gold mb-0">المستخدمين</h4>{user?.role==='commander'&&<button onClick={()=>setShowForm(true)} className="btn btn-gold btn-sm">+ إضافة مستخدم</button>}</div>
+    <div className="table-responsive"><table className="table table-sm table-hover"><thead><tr className="text-gold small"><th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الرتبة</th><th>الحالة</th><th></th></tr></thead><tbody>
+      {users.map((u,i)=><tr key={u.id} className={u.is_active?'':'opacity-50'}><td className="small">{i+1}</td><td className="small">{u.name}</td><td className="small">{u.username}</td><td className="small"><span className="badge bg-dark border border-military">{u.role}</span></td><td className="small">{u.rank_name||'-'}</td><td className="small">{u.is_active?'🟢 نشط':'🔴 معطل'}</td><td className="small">{user?.role==='commander'&&<div className="d-flex gap-1">
+        <button onClick={()=>{const p=prompt('كلمة المرور الجديدة');if(p)api.updateUserPassword(u.id,p).then(()=>onRefresh()).catch(e=>alert(e.message))}} className="btn btn-sm btn-outline-gold py-0" style={{fontSize:'0.65rem'}} title="تغيير كلمة المرور">🔑</button>
+        <button onClick={()=>api.toggleUser(u.id).then(()=>onRefresh()).catch(e=>alert(e.message))} className="btn btn-sm btn-outline-secondary py-0" style={{fontSize:'0.65rem'}} title={u.is_active?'تعطيل':'تفعيل'}>{u.is_active?'🔒':'🔓'}</button>
+        <button onClick={()=>{if(confirm('حذف المستخدم؟'))api.deleteUser(u.id).then(()=>onRefresh()).catch(e=>alert(e.message))}} className="btn btn-sm btn-outline-danger py-0" style={{fontSize:'0.65rem'}} title="حذف">✕</button>
+      </div>}</td></tr>)}
+      {users.length===0&&<tr><td colSpan={7} className="text-center text-muted-military small py-3">لا توجد نتائج</td></tr>}
+    </tbody></table></div>
+    {showForm&&<UserForm ranks={ranks} onClose={()=>{setShowForm(false);onRefresh()}}/>}
+  </div>);
+}
+function UserForm({ranks,onClose}){
+  const[name,setName]=useState('');const[username,setUsername]=useState('');const[password,setPassword]=useState('');
+  const[role,setRole]=useState('officer');const[rankId,setRankId]=useState('');
+  async function save(){if(!name||!username||!password)return;try{await api.createUser({name,username,password,role,rankId:rankId||null});onClose()}catch(e){alert(e.message)}}
+  return(<Modal onClose={onClose}><h5 className="text-gold mb-3">إضافة مستخدم</h5>
+    <input placeholder="الاسم" value={name} onChange={e=>setName(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
+    <input placeholder="اسم المستخدم" value={username} onChange={e=>setUsername(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
+    <input type="password" placeholder="كلمة المرور" value={password} onChange={e=>setPassword(e.target.value)} className="form-control bg-card text-light border-military mb-2"/>
+    <select value={role} onChange={e=>setRole(e.target.value)} className="form-select bg-card text-light border-military mb-2">
+      <option value="commander">قائد</option><option value="officer">ضابط</option><option value="nco">صف ضابط</option>
+    </select>
+    <select value={rankId} onChange={e=>setRankId(e.target.value)} className="form-select bg-card text-light border-military mb-3">
+      <option value="">اختر الرتبة (اختياري)</option>{ranks.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+    </select>
+    <div className="d-flex gap-2"><button onClick={save} className="btn btn-gold flex-grow-1">إنشاء</button><button onClick={onClose} className="btn btn-outline-secondary flex-grow-1">إلغاء</button></div>
   </Modal>);
 }
 
