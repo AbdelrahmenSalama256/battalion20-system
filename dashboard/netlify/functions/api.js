@@ -78,7 +78,7 @@ er.post('/login',async(req,res)=>{
       return res.status(401).json({error:'بيانات الدخول غير صحيحة'});
     const u=rows[0];
     const token=jwt.sign({id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,rankOrder:u.rank_order},process.env.JWT_SECRET,{expiresIn:'24h'});
-    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id}});
+    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,permissions:u.permissions||{}}});
   }catch(e){res.status(500).json({error:e.message})}
 });
 er.get('/me',auth,async(req,res)=>{
