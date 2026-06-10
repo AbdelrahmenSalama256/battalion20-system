@@ -19,29 +19,55 @@ body { background: var(--military-bg); color: var(--military-text); font-family:
 .text-gold-bright { color: var(--military-gold-bright) !important; }
 .text-muted-military { color: var(--military-text2) !important; }
 
+/* Smooth all interactive transitions */
+a, .btn, .nav-link, .sidebar-btn, .dropdown-item, .list-group-item, .soldier-card, .stat-card, .notif-item, .result-row,
+.bell-btn, .bell-badge, .card, .btn-close, .modal-content, .offcanvas, .form-control, .form-select,
+.table-hover tbody tr, .badge, .distinction-star, .gold-border, .score-badge, .notif-scores span,
+.nav-tabs .nav-link { transition: all .2s ease; }
+
+/* Prevent black text on hover in dark theme */
+a:hover, a:focus, .btn:hover, .btn:focus, .nav-link:hover, .nav-link:focus,
+.dropdown-item:hover, .dropdown-item:focus, .list-group-item:hover, .list-group-item:focus,
+.sidebar-btn:hover, .sidebar-btn:focus, .close:hover, .close:focus,
+.modal-header .close:hover, .btn-close:hover { color: var(--military-gold-bright) !important; }
+
 .offcanvas-backdrop { background: rgba(0,0,0,0.7) !important; }
+.modal-backdrop { background: rgba(0,0,0,0.7) !important; }
 .card, .modal-content, .list-group-item, .offcanvas, .dropdown-menu, .form-control, .form-select {
   background-color: var(--military-card) !important;
   border-color: var(--military-border) !important;
   color: var(--military-text) !important;
 }
+.card { transition: border-color .2s ease, box-shadow .2s ease; }
+.offcanvas { transition: transform .3s ease !important; }
+.modal-content { transition: opacity .2s ease, transform .2s ease; }
+.dropdown-item { color: var(--military-text); }
+.dropdown-item:hover { background: rgba(201,168,76,0.1); color: var(--military-gold-bright); }
+.list-group-item { transition: all .2s ease; }
+.list-group-item:hover { background: rgba(201,168,76,0.05); border-color: var(--military-gold); }
+.btn-close { filter: brightness(0) invert(0.8); transition: filter .2s ease, transform .2s ease; }
+.btn-close:hover { filter: brightness(0) invert(1); transform: rotate(90deg); }
 .table { --bs-table-bg: transparent; --bs-table-color: var(--military-text); --bs-table-border-color: var(--military-border); }
 .table-hover > tbody > tr:hover { --bs-table-hover-bg: rgba(255,255,255,0.03); }
+.form-control, .form-select { transition: border-color .2s ease, box-shadow .2s ease; }
 .form-control:focus, .form-select:focus { border-color: var(--military-gold); box-shadow: 0 0 0 0.2rem rgba(201,168,76,0.25); }
 .form-control::placeholder { color: var(--military-text2); opacity: 0.6; }
+.btn { transition: all .2s ease; }
 .btn-gold { background: var(--military-gold-bright); color: #1a1a1a; border: none; }
-.btn-gold:hover { background: #e6c200; color: #1a1a1a; }
+.btn-gold:hover { background: #e6c200; color: #1a1a1a; transform: translateY(-1px); }
 .btn-outline-gold { border-color: var(--military-gold); color: var(--military-gold); }
-.btn-outline-gold:hover { background: rgba(201,168,76,0.1); color: var(--military-gold); }
+.btn-outline-gold:hover { background: rgba(201,168,76,0.15); color: var(--military-gold-bright); border-color: var(--military-gold-bright); }
 .btn-danger-military { background: var(--military-danger); border-color: var(--military-danger); }
+.btn-danger-military:hover { background: #8b0000; border-color: #8b0000; transform: translateY(-1px); }
 .badge-gold { background: rgba(255,215,0,0.15); color: var(--military-gold-bright); border: 1px solid var(--military-gold-bright); }
 .badge-silver { background: rgba(192,192,192,0.15); color: #C0C0C0; border: 1px solid #C0C0C0; }
 .badge-bronze { background: rgba(205,127,50,0.15); color: #CD7F32; border: 1px solid #CD7F32; }
 .gold-border { border-color: var(--military-gold-bright) !important; box-shadow: 0 0 8px rgba(255,215,0,0.15); }
 .distinguished-row { background: rgba(255,215,0,0.04) !important; }
 .distinction-star { position: absolute; top: -6px; left: -6px; font-size: 1.2rem; filter: drop-shadow(0 0 3px rgba(255,215,0,0.5)); }
+.sidebar-btn { transition: all .2s ease; }
 .sidebar-btn.active { background: rgba(201,168,76,0.12); color: var(--military-gold) !important; }
-.sidebar-btn:hover { background: rgba(255,255,255,0.04); }
+.sidebar-btn:hover { background: rgba(201,168,76,0.08); color: var(--military-gold-bright) !important; }
 .soldier-card { cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
 .soldier-card:hover { border-color: var(--military-gold) !important; transform: translateY(-2px); }
 .stat-card { transition: transform 0.2s; cursor: default; }
@@ -49,10 +75,14 @@ body { background: var(--military-bg); color: var(--military-text); font-family:
 .notif-item { cursor: pointer; transition: background 0.15s; }
 .notif-item:hover { background: rgba(255,255,255,0.03); }
 .notif-item.unread { border-right: 3px solid var(--military-gold-bright); }
-.bell-btn { position: relative; background: none; border: none; color: var(--military-gold); font-size: 1.3rem; cursor: pointer; }
-.bell-badge { position: absolute; top: -4px; right: -4px; background: var(--military-danger); color: white; font-size: 0.55rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
-.nav-tabs .nav-link.active { background: var(--military-card) !important; border-color: var(--military-border) !important; color: var(--military-gold) !important; border-bottom-color: var(--military-card) !important; }
-.nav-tabs .nav-link:hover { border-color: var(--military-border) !important; color: var(--military-gold) !important; }
+.bell-btn { position: relative; background: none; border: none; color: var(--military-gold); font-size: 1.3rem; cursor: pointer; transition: transform .2s ease, color .2s ease; }
+.bell-btn:hover { color: var(--military-gold-bright); transform: scale(1.1); }
+.bell-badge { position: absolute; top: -4px; right: -4px; background: var(--military-danger); color: white; font-size: 0.55rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; transition: transform .2s ease; }
+.bell-btn:hover .bell-badge { transform: scale(1.15); }
+.nav-tabs { border-bottom-color: var(--military-border); }
+.nav-tabs .nav-link { color: var(--military-text2); transition: all .2s ease; border: none; border-bottom: 2px solid transparent; }
+.nav-tabs .nav-link.active { background: transparent !important; border: none !important; color: var(--military-gold) !important; border-bottom: 2px solid var(--military-gold) !important; }
+.nav-tabs .nav-link:hover { border: none; color: var(--military-gold-bright) !important; border-bottom: 2px solid var(--military-gold-bright); }
 .notif-scores { display: flex; gap: 4px; flex-wrap: wrap; }
 .notif-scores span { font-size: 0.7rem; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px; color: var(--military-text2); }
 .notif-person { font-size: 0.75rem; color: var(--military-gold); }
