@@ -1,14 +1,16 @@
 const express = require('express');
 const db = require('../config/db');
 const { auth, commanderOnly } = require('../middleware/auth');
+const { rankCheck } = require('../middleware/rankCheck');
+const { notifyAllCommanders } = require('../helpers/notification');
 const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    const { search, weaponId, specialtyId } = req.query;
+    const { search, weaponId, specialtyId, maxRankLevel } = req.query;
     let sql = `
       SELECT s.*,
-        r.name rank_name, rt.name rank_type_name, rt.color rank_type_color,
+        r.name rank_name, r.level rank_level, rt.name rank_type_name, rt.color rank_type_color,
         w.name weapon_name, w.icon weapon_icon, w.color weapon_color,
         sp.name specialty_name
       FROM soldiers s
@@ -16,13 +18,29 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN rank_types rt ON rt.id=r.type_id
       LEFT JOIN weapons w ON w.id=s.weapon_id
       LEFT JOIN specialties sp ON sp.id=s.specialty_id
-      WHERE ($1::text IS NULL OR s.name ILIKE '%'||$1||'%' OR s.military_id ILIKE '%'||$1||'%')
-      AND ($2::uuid IS NULL OR s.weapon_id=$2::uuid)
+      WHERE 1=1
     `;
-    const params = [search || null, weaponId || null];
+    const params = [];
+    let idx = 1;
+    if (search) {
+      sql += ` AND (s.name ILIKE '%'||$${idx}||'%' OR s.military_id ILIKE '%'||$${idx}||'%')`;
+      params.push(search);
+      idx++;
+    }
+    if (weaponId) {
+      sql += ` AND s.weapon_id=$${idx}::uuid`;
+      params.push(weaponId);
+      idx++;
+    }
     if (specialtyId) {
-      sql += ' AND s.specialty_id=$3::uuid';
+      sql += ` AND s.specialty_id=$${idx}::uuid`;
       params.push(specialtyId);
+      idx++;
+    }
+    if (maxRankLevel) {
+      sql += ` AND (r.level IS NULL OR r.level <= $${idx}::int)`;
+      params.push(parseInt(maxRankLevel));
+      idx++;
     }
     sql += ' ORDER BY s.created_at DESC';
     const { rows } = await db.query(sql, params);
@@ -36,7 +54,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const soldier = await db.query(
       `SELECT s.*,
-        r.name rank_name, rt.name rank_type_name, rt.color rank_type_color,
+        r.name rank_name, r.level rank_level, rt.name rank_type_name, rt.color rank_type_color,
         w.name weapon_name, w.icon weapon_icon, w.color weapon_color,
         sp.name specialty_name
       FROM soldiers s
@@ -95,6 +113,68 @@ router.delete('/:id', auth, commanderOnly, async (req, res) => {
     const { rowCount } = await db.query('DELETE FROM soldiers WHERE id=$1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'الجندي غير موجود' });
     res.json({ message: 'تم الحذف بنجاح' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/:id/evaluate', auth, rankCheck('id', true), async (req, res) => {
+  try {
+    const { fitnessScore, specialtyScore, disciplineScore, notes } = req.body;
+    const soldierId = req.params.id;
+    if (fitnessScore == null || specialtyScore == null || disciplineScore == null) {
+      return res.status(400).json({ error: 'يرجى إدخال جميع الدرجات' });
+    }
+    const totalScore = Math.round(((fitnessScore + specialtyScore + disciplineScore) / 300) * 100 * 100) / 100;
+    const soldier = await db.query('SELECT name FROM soldiers WHERE id=$1', [soldierId]);
+    const result = await db.query(
+      `INSERT INTO results (soldier_id, result_type, total_score, notes, entered_by,
+        fitness_score, specialty_score, discipline_score)
+       VALUES ($1,'evaluation',$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [soldierId, totalScore, notes || null, req.user.id, fitnessScore, specialtyScore, disciplineScore]
+    );
+    const evaluator = await db.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await notifyAllCommanders(
+      'تقييم جديد',
+      `تم تقييم ${soldier.rows[0]?.name || 'جندي'} بـ ${totalScore}% بواسطة ${evaluator.rows[0]?.name || ''}`,
+      'evaluation',
+      {
+        evaluatorId: req.user.id, evaluatorName: evaluator.rows[0]?.name,
+        evaluatedId: soldierId, evaluatedName: soldier.rows[0]?.name,
+        fitnessScore, specialtyScore, disciplineScore, totalScore,
+        relatedResultId: result.rows[0].id,
+      }
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/:id/distinguish', auth, async (req, res) => {
+  try {
+    const { badge, citation } = req.body;
+    await db.query(
+      `UPDATE soldiers SET distinction_badge=$1, distinction_citation=$2,
+       distinguished_by=$3, distinguished_at=NOW()
+       WHERE id=$4`,
+      [badge, citation, req.user.id, req.params.id]
+    );
+    res.json({ message: 'تم منح الوسام' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/:id/distinguish', auth, async (req, res) => {
+  try {
+    await db.query(
+      `UPDATE soldiers SET distinction_badge=NULL, distinction_citation=NULL,
+       distinguished_by=NULL, distinguished_at=NULL
+       WHERE id=$1`,
+      [req.params.id]
+    );
+    res.json({ message: 'تم إزالة الوسام' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

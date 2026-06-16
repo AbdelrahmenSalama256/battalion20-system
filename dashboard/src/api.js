@@ -43,6 +43,7 @@ export const api = {
     if (params?.search) q.set('search', params.search);
     if (params?.weaponId) q.set('weaponId', params.weaponId);
     if (params?.specialtyId) q.set('specialtyId', params.specialtyId);
+    if (params?.maxRankLevel) q.set('maxRankLevel', params.maxRankLevel);
     return req('GET', `/soldiers?${q.toString()}`);
   },
   getSoldier: (id) => req('GET', `/soldiers/${id}`),

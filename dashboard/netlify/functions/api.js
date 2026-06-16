@@ -74,17 +74,17 @@ er.post('/login',async(req,res)=>{
   try{
     const{username,password}=req.body;
     if(!username||!password) return res.status(400).json({error:'يرجى إدخال البيانات'});
-    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.password_hash,u.role,u.is_active,u.created_at,u.rank_id,r.name rank_name,r.sort_order rank_order FROM users u LEFT JOIN ranks r ON r.id=u.rank_id::uuid WHERE u.username=$1 AND u.is_active=true",[username]);
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.password_hash,u.role,u.is_active,u.created_at,u.rank_id,u.permissions,u.avatar_url,r.name rank_name,r.sort_order rank_order FROM users u LEFT JOIN ranks r ON r.id=u.rank_id::uuid WHERE u.username=$1 AND u.is_active=true",[username]);
     if(!rows.length||!(await bcrypt.compare(password,rows[0].password_hash)))
       return res.status(401).json({error:'بيانات الدخول غير صحيحة'});
     const u=rows[0];
     const token=jwt.sign({id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,rankOrder:u.rank_order},process.env.JWT_SECRET,{expiresIn:'24h'});
-    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,permissions:u.permissions||{},avatar_url:u.avatar_url}});
+    res.json({token,user:{id:u.id,name:u.name,username:u.username,role:u.role,rankId:u.rank_id,rankOrder:u.rank_order,rankName:u.rank_name,permissions:u.permissions||{},avatar_url:u.avatar_url}});
   }catch(e){res.status(500).json({error:e.message})}
 });
 er.get('/me',auth,async(req,res)=>{
   try{
-    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.permissions,u.avatar_url,r.name rank_name FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
+    const{rows}=await db.query("SELECT u.id,u.name,u.username,u.role,u.permissions,u.avatar_url,r.name rank_name,r.sort_order rank_order FROM users u LEFT JOIN ranks r ON r.id=u.rank_id WHERE u.id=$1",[req.user.id]);
     if(!rows.length) return res.status(404).json({error:'غير موجود'});
     res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
@@ -496,8 +496,9 @@ app.post('/api/admin/seed',auth,commanderOnly,async(req,res)=>{
   try{
     await db.query("INSERT INTO weapons(name,icon)VALUES('المشاة','🔫'),('المدرعات','🛡️'),('المدفعية','💣'),('الإشارة','📡'),('المهندسين','🔧') ON CONFLICT DO NOTHING");
     await db.query("INSERT INTO rank_types(name,color)VALUES('ضباط','#C9A84C'),('صف ضباط','#9CAF88'),('جنود','#2D6A4F') ON CONFLICT DO NOTHING");
-    await db.query("INSERT INTO ranks(name,type_id,sort_order)SELECT 'ملازم',(SELECT id FROM rank_types WHERE name='ضباط' LIMIT 1),1 WHERE EXISTS(SELECT 1 FROM rank_types WHERE name='ضباط')");
-    await db.query("INSERT INTO soldiers(name,military_id,weapon_id,specialty_id)SELECT 'جندي تجريبي','12345',(SELECT id FROM weapons LIMIT 1),(SELECT id FROM specialties LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
+    await db.query("WITH rt AS (SELECT id FROM rank_types WHERE name='ضباط' LIMIT 1), srt AS (SELECT id FROM rank_types WHERE name='صف ضباط' LIMIT 1), jrt AS (SELECT id FROM rank_types WHERE name='جنود' LIMIT 1) INSERT INTO ranks(name,type_id,sort_order) SELECT * FROM (VALUES('جندي',(SELECT id FROM jrt),1),('جندي أول',(SELECT id FROM jrt),2),('عريف',(SELECT id FROM srt),3),('وكيل رقيب',(SELECT id FROM srt),4),('رقيب',(SELECT id FROM srt),5),('رقيب أول',(SELECT id FROM srt),6),('مساعد',(SELECT id FROM srt),7),('مساعد أول',(SELECT id FROM srt),8),('ملازم',(SELECT id FROM rt),9),('ملازم أول',(SELECT id FROM rt),10),('نقيب',(SELECT id FROM rt),11),('رائد',(SELECT id FROM rt),12),('مقدم',(SELECT id FROM rt),13),('عقيد',(SELECT id FROM rt),14)) AS v WHERE NOT EXISTS(SELECT 1 FROM ranks)");
+    await db.query("INSERT INTO specialties(name,weapon_id)SELECT 'قناص',(SELECT id FROM weapons WHERE name='المشاة' LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
+    await db.query("INSERT INTO soldiers(name,military_id,rank_id,weapon_id,specialty_id)SELECT 'جندي تجريبي','12345',(SELECT id FROM ranks WHERE name='جندي' LIMIT 1),(SELECT id FROM weapons WHERE name='المشاة' LIMIT 1),(SELECT id FROM specialties LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
     await db.query("INSERT INTO exams(type,title,weapon_id)SELECT 'لياقة','اختبار تجريبي',(SELECT id FROM weapons LIMIT 1) WHERE EXISTS(SELECT 1 FROM weapons)");
     await db.query("INSERT INTO announcements(title,body,priority,created_by)SELECT 'مرحباً','المنصة جاهزة للعمل','info',(SELECT id FROM users WHERE role='commander' LIMIT 1)");
     res.json({message:'✅ تم إضافة بيانات تجريبية'});

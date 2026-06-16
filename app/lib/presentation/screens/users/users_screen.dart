@@ -26,13 +26,13 @@ class _UsersScreenState extends State<UsersScreen> {
   bool _formLoading = false;
 
   static const _allPages = [
-    'dashboard', 'soldiers', 'exams', 'results',
+    'dashboard', 'soldiers', 'evaluation', 'exams', 'results',
     'notifications', 'announcements', 'users', 'settings',
   ];
   static const _pageLabels = {
-    'dashboard': 'الرئيسية', 'soldiers': 'الأفراد', 'exams': 'الامتحانات',
-    'results': 'النتائج', 'notifications': 'الإشعارات', 'announcements': 'الإعلانات',
-    'users': 'المستخدمين', 'settings': 'الإعدادات',
+    'dashboard': 'الرئيسية', 'soldiers': 'الأفراد', 'evaluation': 'التقييم',
+    'exams': 'الامتحانات', 'results': 'النتائج', 'notifications': 'الإشعارات',
+    'announcements': 'الإعلانات', 'users': 'المستخدمين', 'settings': 'الإعدادات',
   };
 
   @override

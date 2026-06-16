@@ -2,6 +2,8 @@ const express = require('express');
 const db = require('../config/db');
 const pool = require('../config/db').pool;
 const { auth, commanderOnly } = require('../middleware/auth');
+const { rankCheck } = require('../middleware/rankCheck');
+const { notifyUser, notifyAllCommanders } = require('../helpers/notification');
 const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
@@ -113,9 +115,9 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, rankCheck('soldierId'), async (req, res) => {
   try {
-    const { examId, soldierId, scores, notes, resultType, examDate } = req.body;
+    const { examId, soldierId, scores, notes, resultType, examDate, isImportant, flag } = req.body;
     if (!examId || !soldierId || !scores?.length) {
       return res.status(400).json({ error: 'يرجى إدخال البيانات المطلوبة' });
     }
@@ -139,9 +141,11 @@ router.post('/', auth, async (req, res) => {
       }
       const totalScore = totalMax > 0 ? Math.round((totalGot / totalMax) * 100 * 100) / 100 : 0;
       const result = await client.query(
-        `INSERT INTO results (exam_id, soldier_id, result_type, total_score, notes, exam_date, entered_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [examId, soldierId, resultType || 'exam', totalScore, notes || null, examDate || new Date().toISOString().split('T')[0], req.user.id]
+        `INSERT INTO results (exam_id, soldier_id, result_type, total_score, notes, exam_date, entered_by, is_important, flag)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [examId, soldierId, resultType || 'exam', totalScore, notes || null,
+         examDate || new Date().toISOString().split('T')[0], req.user.id,
+         isImportant === true, flag || 'normal']
       );
       for (const item of items.rows) {
         const score = scores.find(s => s.itemId === item.id);
@@ -152,6 +156,27 @@ router.post('/', auth, async (req, res) => {
         );
       }
       await client.query('COMMIT');
+
+      const soldier = await db.query('SELECT name FROM soldiers WHERE id=$1', [soldierId]);
+
+      if (isImportant === true) {
+        await notifyAllCommanders(
+          'ملاحظة مهمة',
+          `تم إضافة نتيجة مهمة للجندي ${soldier.rows[0]?.name || ''}`,
+          'important_note',
+          { evaluatorId: req.user.id, evaluatorName: req.user.name, evaluatedId: soldierId, evaluatedName: soldier.rows[0]?.name, totalScore, relatedResultId: result.rows[0].id }
+        );
+      }
+
+      if (flag && flag !== 'normal') {
+        await notifyAllCommanders(
+          'تحديث علم النتيجة',
+          `تم تعيين علم "${flag === 'exceptional' ? 'استثنائي' : 'تحذير'}" لنتيجة الجندي ${soldier.rows[0]?.name || ''}`,
+          'flag_updated',
+          { evaluatorId: req.user.id, evaluatorName: req.user.name, evaluatedId: soldierId, evaluatedName: soldier.rows[0]?.name, totalScore, relatedResultId: result.rows[0].id }
+        );
+      }
+
       res.status(201).json({ ...result.rows[0], totalScore });
     } catch (e) {
       await client.query('ROLLBACK');

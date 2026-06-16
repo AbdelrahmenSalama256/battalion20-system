@@ -12,7 +12,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'يرجى إدخال اسم المستخدم وكلمة المرور' });
     }
     const { rows } = await db.query(
-      'SELECT * FROM users WHERE username=$1 AND is_active=true',
+      `SELECT u.*, r.name rank_name, r.level rank_level
+       FROM users u
+       LEFT JOIN ranks r ON r.id=u.rank_id
+       WHERE u.username=$1 AND u.is_active=true`,
       [username]
     );
     if (!rows.length) {
@@ -30,7 +33,12 @@ router.post('/login', async (req, res) => {
     );
     res.json({
       token,
-      user: { id: user.id, name: user.name, username: user.username, role: user.role }
+      user: {
+        id: user.id, name: user.name, username: user.username, role: user.role,
+        rank_id: user.rank_id, rank_name: user.rank_name, rank_level: user.rank_level,
+        permissions: user.permissions || {},
+        is_active: user.is_active,
+      }
     });
   } catch (e) {
     res.status(500).json({ error: 'حدث خطأ في الخادم: ' + e.message });
@@ -40,7 +48,11 @@ router.post('/login', async (req, res) => {
 router.get('/me', authMidd.auth, async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT id, name, username, role, is_active, created_at FROM users WHERE id=$1',
+      `SELECT u.id, u.name, u.username, u.role, u.is_active, u.rank_id, u.permissions,
+        u.created_at, r.name rank_name, r.level rank_level
+       FROM users u
+       LEFT JOIN ranks r ON r.id=u.rank_id
+       WHERE u.id=$1`,
       [req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'المستخدم غير موجود' });

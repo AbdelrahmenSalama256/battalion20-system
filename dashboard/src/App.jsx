@@ -572,7 +572,7 @@ const PERMISSIONS={
   ]},
 };
 const PAGE_LABELS={
-  dashboard:'الرئيسية',soldiers:'الأفراد',exams:'الامتحانات',results:'النتائج',
+  dashboard:'الرئيسية',soldiers:'الأفراد',evaluation:'التقييم',exams:'الامتحانات',results:'النتائج',
   notifications:'الإشعارات',announcements:'الإعلانات',users:'المستخدمين',settings:'الإعدادات',profile:'حسابي'
 };
 function UserForm({ranks,onClose}){

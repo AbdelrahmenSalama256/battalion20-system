@@ -16,8 +16,10 @@ class ApiService {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (opts, handler) async {
-        final t = await _storage.read(key: AC.tokenKey);
-        if (t != null) opts.headers['Authorization'] = 'Bearer $t';
+        try {
+          final t = await _storage.read(key: AC.tokenKey).timeout(const Duration(seconds: 5));
+          if (t != null) opts.headers['Authorization'] = 'Bearer $t';
+        } catch (_) {}
         handler.next(opts);
       },
       onError: (e, handler) async {

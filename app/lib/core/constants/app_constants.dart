@@ -1,6 +1,6 @@
 class AC {
   static const String appName = 'كتيبة 20';
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3001/api');
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'https://battalion20.netlify.app/api');
   static const String tokenKey = 'b20_token';
   static const String userKey = 'b20_user';
   static const String fontFamily = 'Tajawal';

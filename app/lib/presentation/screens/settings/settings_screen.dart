@@ -525,6 +525,18 @@ class _RanksTabState extends State<_RanksTab> {
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
+  Color _parseColor(dynamic c) {
+    if (c == null) return const Color(AC.gold);
+    final s = c.toString();
+    if (s.isEmpty) return const Color(AC.gold);
+    final hex = s.replaceFirst('#', '0xff');
+    try {
+      return Color(int.parse(hex));
+    } catch (_) {
+      return const Color(AC.gold);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _loading
@@ -547,10 +559,10 @@ class _RanksTabState extends State<_RanksTab> {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                             decoration: BoxDecoration(
-                              color: rt['color'] != null ? Color(int.parse(rt['color'])).withOpacity(0.15) : const Color(AC.gold).withOpacity(0.1),
+                              color: _parseColor(rt['color']).withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6.r),
                             ),
-                            child: Text(rt['name'] ?? '', style: TextStyle(fontSize: 13.sp, color: rt['color'] != null ? Color(int.parse(rt['color'])) : const Color(AC.gold))),
+                            child: Text(rt['name'] ?? '', style: TextStyle(fontSize: 13.sp, color: _parseColor(rt['color']))),
                           ),
                           SizedBox(width: 8.w),
                           Expanded(

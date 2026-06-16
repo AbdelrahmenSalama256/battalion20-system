@@ -21,6 +21,10 @@ class _SoldierProfileScreenState extends State<SoldierProfileScreen> {
   List<ResultModel> _results = [];
   bool _loading = true;
   String? _error;
+  int _selectedPeriod = 0;
+
+  static const _periodLabels = ['أسبوعي', 'شهري', 'سنوي', 'الإجمالي'];
+  static const _periodDays = [7, 30, 365, null];
 
   @override
   void initState() {
@@ -33,7 +37,7 @@ class _SoldierProfileScreenState extends State<SoldierProfileScreen> {
     try {
       final repo = ApiRepository(context.read<ApiService>());
       final soldier = await repo.getSoldier(widget.soldierId);
-      final results = await repo.getResultsList(soldierId: widget.soldierId, limit: 50);
+      final results = await repo.getResultsList(soldierId: widget.soldierId, limit: 200);
       if (mounted) setState(() {
         _soldier = soldier;
         _results = results;
@@ -97,6 +101,8 @@ class _SoldierProfileScreenState extends State<SoldierProfileScreen> {
             _buildInfoCard(s),
             SizedBox(height: 16.h),
             if (lr != null) _buildLastResultCard(lr),
+            SizedBox(height: 16.h),
+            _buildPeriodBreakdown(),
             SizedBox(height: 16.h),
             _sectionHeader('التقييمات السابقة'),
             SizedBox(height: 8.h),
@@ -231,6 +237,133 @@ class _SoldierProfileScreenState extends State<SoldierProfileScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodBreakdown() {
+    final days = _periodDays[_selectedPeriod];
+    final label = _periodLabels[_selectedPeriod];
+    final filtered = days == null
+        ? _results
+        : _results.where((r) {
+            final d = r.createdAt;
+            if (d == null || d.length < 10) return false;
+            try {
+              final dt = DateTime.parse(d.substring(0, 10));
+              return dt.isAfter(DateTime.now().subtract(Duration(days: days)));
+            } catch (_) {
+              return false;
+            }
+          }).toList();
+
+    if (filtered.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(color: const Color(AC.card), borderRadius: BorderRadius.circular(12.r), border: Border.all(color: const Color(AC.cardBorder))),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader('تحليل التقييمات - $label'),
+            SizedBox(height: 12.h),
+            _buildPeriodTabs(),
+            SizedBox(height: 12.h),
+            Center(child: Text('لا توجد تقييمات في هذه الفترة', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textSecondary)))),
+          ],
+        ),
+      );
+    }
+
+    final total = filtered.length;
+    final avgFit = filtered.fold(0.0, (s, r) => s + (r.fitnessScore ?? 0)) / total;
+    final avgSpec = filtered.fold(0.0, (s, r) => s + (r.specialtyScore ?? 0)) / total;
+    final avgDisc = filtered.fold(0.0, (s, r) => s + (r.disciplineScore ?? 0)) / total;
+    final avgAll = filtered.fold(0.0, (s, r) => s + (r.totalScore ?? 0)) / total;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(color: const Color(AC.card), borderRadius: BorderRadius.circular(12.r), border: Border.all(color: const Color(AC.cardBorder))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('تحليل التقييمات - $label'),
+          SizedBox(height: 8.h),
+          _buildPeriodTabs(),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              _miniStatCard('عدد التقييمات', '$total', const Color(AC.gold)),
+              SizedBox(width: 8.w),
+              _miniStatCard('المعدل العام', avgAll.toStringAsFixed(1), const Color(AC.textPrimary)),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              _scoreBox('اللياقة', avgFit, const Color(0xFF4FC3F7)),
+              SizedBox(width: 8.w),
+              _scoreBox('التخصص', avgSpec, const Color(AC.gold)),
+              SizedBox(width: 8.w),
+              _scoreBox('الانضباط', avgDisc, const Color(0xFF66BB6A)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodTabs() {
+    return Row(
+      children: List.generate(_periodLabels.length, (i) {
+        final isSelected = i == _selectedPeriod;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedPeriod = i),
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 8.h),
+              margin: EdgeInsets.symmetric(horizontal: 2.w),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isSelected ? const Color(AC.gold) : Colors.transparent,
+                    width: 2.5,
+                  ),
+                ),
+              ),
+              child: Text(
+                _periodLabels[i],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? const Color(AC.gold) : const Color(AC.textSecondary),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _miniStatCard(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: color)),
+            SizedBox(height: 2.h),
+            Text(label, style: TextStyle(fontSize: 11.sp, color: const Color(AC.textSecondary))),
+          ],
+        ),
       ),
     );
   }

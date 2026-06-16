@@ -27,7 +27,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> checkAuth() async {
     emit(AuthLoading());
     try {
-      final user = await _repo.getMe();
+      final user = await _repo.getMe().timeout(const Duration(seconds: 30));
       emit(AuthAuthenticated(user));
     } catch (_) {
       emit(AuthUnauthenticated());

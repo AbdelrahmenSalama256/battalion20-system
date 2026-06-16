@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/db');
 const { auth, commanderOnly } = require('../middleware/auth');
+const { notifyAllCommanders } = require('../helpers/notification');
 const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
@@ -23,6 +24,11 @@ router.post('/', auth, commanderOnly, async (req, res) => {
     const { rows } = await db.query(
       'INSERT INTO weapons (name, color, icon) VALUES ($1, $2, $3) RETURNING *',
       [name, color || '#2d6a4f', icon || '⚔️']
+    );
+    await notifyAllCommanders(
+      'تنبيه النظام',
+      `تم إضافة سلاح جديد: ${name}`,
+      'system_alert'
     );
     res.status(201).json(rows[0]);
   } catch (e) {

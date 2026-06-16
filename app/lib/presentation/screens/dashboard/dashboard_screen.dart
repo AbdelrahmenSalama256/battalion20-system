@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../cubits/auth/auth_cubit.dart';
 import '../../cubits/dashboard/dashboard_cubit.dart';
 import '../../cubits/soldiers/soldiers_cubit.dart';
+import '../../cubits/users/users_cubit.dart';
 import '../../cubits/notifications/notifications_cubit.dart';
 import '../../cubits/evaluation/evaluation_cubit.dart';
 import '../../../core/constants/app_constants.dart';
@@ -12,6 +14,7 @@ import '../soldiers/soldiers_screen.dart';
 import '../exams/exams_screen.dart';
 import '../results/results_screen.dart';
 import '../announcements/announcements_screen.dart';
+import '../users/users_screen.dart';
 import '../settings/settings_screen.dart';
 import '../profile/profile_screen.dart';
 import '../evaluations/evaluation_form_screen.dart';
@@ -42,28 +45,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      _buildDashboardTab(),
-      const SoldiersScreen(),
-      const EvaluationFormScreen(),
-      const NotificationsScreen(),
-      const ProfileScreen(),
+    final user = context.select((AuthCubit c) => c.state is AuthAuthenticated ? (c.state as AuthAuthenticated).user : null);
+    final isCommander = user?.role == 'commander';
+    final perms = user?.permissions;
+    final allowedPages = (perms != null ? perms['pages'] : null) as List<dynamic>?;
+    final hasPagePerms = allowedPages != null && allowedPages.isNotEmpty;
+
+    bool pageAllowed(String id) {
+      if (id == 'notifications' || id == 'profile') return true;
+      if (isCommander) return true;
+      if (!hasPagePerms) return !['users', 'settings'].contains(id);
+      return allowedPages.contains(id);
+    }
+
+    final allTabs = <_TabItem>[
+      _TabItem('الرئيسية', Icons.dashboard_outlined, Icons.dashboard, 'dashboard'),
+      _TabItem('الأفراد', Icons.people_outline, Icons.people, 'soldiers'),
+      _TabItem('التقييم', Icons.assignment_turned_in_outlined, Icons.assignment_turned_in, 'evaluation'),
+      _TabItem('المستخدمين', Icons.manage_accounts_outlined, Icons.manage_accounts, 'users'),
+      _TabItem('الإشعارات', Icons.notifications_outlined, Icons.notifications, 'notifications'),
+      _TabItem('الملف الشخصي', Icons.person_outline, Icons.person, 'profile'),
     ];
+
+    final tabs = allTabs.where((t) => pageAllowed(t.id)).toList();
+    final screens = tabs.map((t) => _screenForId(t.id)).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_tabs[_currentIndex].label, style: TextStyle(fontSize: 18.sp)),
+        title: Text(tabs[_currentIndex].label, style: TextStyle(fontSize: 18.sp)),
         centerTitle: true,
         actions: [
           if (_currentIndex == 0)
             IconButton(
               icon: Icon(Icons.tune, color: const Color(AC.textSecondary), size: 20.r),
-              onPressed: () => _showQuickActions(context),
+              onPressed: () => _showQuickActions(context, pageAllowed),
             ),
-          if (_currentIndex == 4)
+          if (_currentIndex == tabs.length - 1)
+            IconButton(
+              icon: Icon(Icons.logout, color: const Color(AC.danger), size: 20.r),
+              tooltip: 'تسجيل الخروج',
+              onPressed: () => _confirmLogout(),
+            ),
+          if (_currentIndex == tabs.length - 1)
             IconButton(
               icon: Icon(Icons.settings_outlined, color: const Color(AC.textSecondary), size: 20.r),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+              onPressed: () => pageAllowed('settings') ? _pushWithAppBar(const SettingsScreen(), 'الإعدادات') : null,
             ),
         ],
       ),
@@ -76,15 +102,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) {
             setState(() => _currentIndex = i);
-            if (i == 0) context.read<DashboardCubit>().loadStats();
-            if (i == 1) context.read<SoldiersCubit>().loadSoldiers();
-            if (i == 2) context.read<EvaluationCubit>().init();
+            if (i.isFinite && i < tabs.length) {
+              final id = tabs[i].id;
+              if (id == 'dashboard') context.read<DashboardCubit>().loadStats();
+              if (id == 'soldiers') context.read<SoldiersCubit>().loadSoldiers();
+              if (id == 'evaluation') context.read<EvaluationCubit>().init();
+              if (id == 'users') context.read<UsersCubit>().loadUsers();
+            }
           },
           backgroundColor: const Color(AC.card),
           indicatorColor: const Color(AC.gold).withOpacity(0.15),
           height: 70.h,
           labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          destinations: _tabs.map((t) => NavigationDestination(
+          destinations: tabs.map((t) => NavigationDestination(
             icon: Icon(t.icon, color: const Color(AC.textSecondary), size: 22.r),
             selectedIcon: Icon(t.selectedIcon, color: const Color(AC.gold), size: 22.r),
             label: t.label,
@@ -94,7 +124,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showQuickActions(BuildContext context) {
+  Widget _screenForId(String id) {
+    switch (id) {
+      case 'dashboard': return _buildDashboardTab();
+      case 'soldiers': return const SoldiersScreen();
+      case 'evaluation': return const EvaluationFormScreen();
+      case 'users': return const UsersScreen();
+      case 'notifications': return const NotificationsScreen();
+      case 'profile': return const ProfileScreen();
+      default: return const SizedBox();
+    }
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(AC.card),
+        title: Text('تسجيل الخروج', style: TextStyle(fontSize: 18.sp, color: const Color(AC.gold))),
+        content: Text('هل أنت متأكد؟', style: TextStyle(fontSize: 14.sp, color: const Color(AC.textPrimary))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () { Navigator.pop(ctx); context.read<AuthCubit>().logout(); },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(AC.danger)),
+            child: const Text('تسجيل الخروج'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showQuickActions(BuildContext context, bool Function(String) pageAllowed) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(AC.card),
@@ -108,10 +169,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(height: 16.h),
             Text('الوصول السريع', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: const Color(AC.gold))),
             SizedBox(height: 16.h),
-            _quickActionItem(ctx, 'الامتحانات', Icons.assignment_outlined, () => _navigateTo(const ExamsScreen())),
-            _quickActionItem(ctx, 'النتائج', Icons.grading_outlined, () => _navigateTo(const ResultsScreen())),
-            _quickActionItem(ctx, 'الإعلانات', Icons.campaign_outlined, () => _navigateTo(const AnnouncementsScreen())),
-            _quickActionItem(ctx, 'الإعدادات', Icons.settings_outlined, () => _navigateTo(const SettingsScreen())),
+            if (pageAllowed('exams')) _quickActionItem(ctx, 'الامتحانات', Icons.assignment_outlined, () => _pushWithAppBar(const ExamsScreen(), 'الامتحانات')),
+            if (pageAllowed('results')) _quickActionItem(ctx, 'النتائج', Icons.grading_outlined, () => _pushWithAppBar(const ResultsScreen(), 'النتائج')),
+            if (pageAllowed('announcements')) _quickActionItem(ctx, 'الإعلانات', Icons.campaign_outlined, () => _pushWithAppBar(const AnnouncementsScreen(), 'الإعلانات')),
+            if (pageAllowed('users')) _quickActionItem(ctx, 'المستخدمين', Icons.manage_accounts_outlined, () => _pushWithAppBar(const UsersScreen(), 'المستخدمين')),
+            if (pageAllowed('settings')) _quickActionItem(ctx, 'الإعدادات', Icons.settings_outlined, () => _pushWithAppBar(const SettingsScreen(), 'الإعدادات')),
             SizedBox(height: 8.h),
           ],
         ),
@@ -119,9 +181,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _navigateTo(Widget screen) {
+  void _pushWithAppBar(Widget body, String title) {
     Navigator.pop(context);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+      appBar: AppBar(title: Text(title, style: TextStyle(fontSize: 18.sp)), centerTitle: true),
+      body: body,
+    )));
   }
 
   Widget _quickActionItem(BuildContext ctx, String label, IconData icon, VoidCallback onTap) {
@@ -356,20 +421,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  static final _tabs = <_TabItem>[
-    _TabItem('الرئيسية', Icons.dashboard_outlined, Icons.dashboard),
-    _TabItem('الأفراد', Icons.people_outline, Icons.people),
-    _TabItem('التقييم', Icons.assignment_turned_in_outlined, Icons.assignment_turned_in),
-    _TabItem('الإشعارات', Icons.notifications_outlined, Icons.notifications),
-    _TabItem('الملف الشخصي', Icons.person_outline, Icons.person),
-  ];
 }
 
 class _TabItem {
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-  _TabItem(this.label, this.icon, this.selectedIcon);
+  final String id;
+  _TabItem(this.label, this.icon, this.selectedIcon, this.id);
 }
 
 class _DistItem {

@@ -1,7 +1,9 @@
 require('dotenv').config();
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const { initSocket } = require('./socket');
 
 const authRoutes = require('./routes/auth');
 const rankTypesRoutes = require('./routes/rankTypes');
@@ -13,6 +15,7 @@ const examsRoutes = require('./routes/exams');
 const resultsRoutes = require('./routes/results');
 const fitnessRoutes = require('./routes/fitness');
 const announcementsRoutes = require('./routes/announcements');
+const notificationsRoutes = require('./routes/notifications');
 const usersRoutes = require('./routes/users');
 const aiRoutes = require('./routes/ai');
 
@@ -41,6 +44,7 @@ app.use('/api/exams', examsRoutes);
 app.use('/api/results', resultsRoutes);
 app.use('/api/fitness', fitnessRoutes);
 app.use('/api/announcements', announcementsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/ai', aiRoutes);
 
@@ -50,7 +54,9 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
+  const server = http.createServer(app);
+  initSocket(server);
+  server.listen(PORT, () => {
     console.log(`🚀 Battalion20 API running on http://localhost:${PORT}`);
     console.log(`🌐 Accepting requests from: ${FRONTEND_URL}`);
   });

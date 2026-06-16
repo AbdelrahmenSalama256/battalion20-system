@@ -56,6 +56,6 @@ class UserModel {
   bool canEvaluate(UserModel other) {
     if (role == 'commander') return true;
     if (rankOrder == null || other.rankOrder == null) return false;
-    return rankOrder! < other.rankOrder!;
+    return rankOrder! > other.rankOrder!;
   }
 }
