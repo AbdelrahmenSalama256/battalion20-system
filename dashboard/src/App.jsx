@@ -4,6 +4,12 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles.css';
 
 function toPct(v){return v!=null?Number(v).toFixed(1):'-'}
+function canDistinguish(user,soldier){
+  if(!user||!soldier)return false;
+  if(user.role==='commander')return true;
+  if(user.rankOrder==null||soldier.rank_order==null)return false;
+  return user.rankOrder>soldier.rank_order;
+}
 
 export default function App(){
   const[u,setU]=useState(null);
@@ -293,7 +299,7 @@ function SoldiersPage({soldiers,weapons,specialties,ranks,rankTypes,onRefresh,us
     <div className="d-flex gap-2 mb-3"><input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={e=>setSearch(e.target.value)} className="form-control bg-card text-light border-military" style={{maxWidth:300}}/>
       <select value={weaponFilter} onChange={e=>setWeaponFilter(e.target.value)} className="form-select bg-card text-light border-military" style={{maxWidth:160}}><option value="">الكل</option>{weapons.map(w=><option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}</select></div>
     {/* Mobile: card grid */}
-    <div className="row g-2 d-md-none">{filtered.map(s=><SoldierCard key={s.id} soldier={s} onDistinguish={user?.role==='commander'?onDistinguish:null} onClick={onSoldierClick}/>)}</div>
+    <div className="row g-2 d-md-none">{filtered.map(s=><SoldierCard key={s.id} soldier={s} onDistinguish={canDistinguish(user,s)?onDistinguish:null} onClick={onSoldierClick}/>)}</div>
     {/* Desktop: data table */}
     <div className="table-responsive d-none d-md-block"><table className="table table-sm table-hover border-military"><thead><tr className="text-gold small">
       <th>الرتبة</th><th>الاسم</th><th>السلاح</th><th>التخصص العام</th><th>التخصص الدقيق</th><th>اللياقة</th><th>التخصص</th><th>الانضباط</th><th>المجموع</th><th>الوسام</th><th></th>
@@ -310,7 +316,7 @@ function SoldiersPage({soldiers,weapons,specialties,ranks,rankTypes,onRefresh,us
         <td className="small">{last.discipline_score!=null?`${Number(last.discipline_score).toFixed(0)}`:'-'}</td>
         <td className="small">{last.total_score!=null?<ScoreBadge score={last.total_score}/>:'-'}</td>
         <td className="small">{s.distinction_badge?<span className={`badge ${s.distinction_badge==='gold'?'badge-gold':s.distinction_badge==='silver'?'badge-silver':'badge-bronze'}`}>🥇</span>:'-'}</td>
-        <td>{user?.role==='commander'&&<button className="btn btn-sm btn-outline-gold py-0 px-1" style={{fontSize:'0.65rem'}} onClick={e=>{e.stopPropagation();onDistinguish(s)}}>🎖️</button>}</td>
+        <td>{canDistinguish(user,s)&&<button className="btn btn-sm btn-outline-gold py-0 px-1" style={{fontSize:'0.65rem'}} onClick={e=>{e.stopPropagation();onDistinguish(s)}}>🎖️</button>}</td>
       </tr>)
     })}</tbody></table></div>
     {editSoldier!=null&&<SoldierForm soldier={editSoldier} weapons={weapons} specialties={specialties} ranks={ranks} rankTypes={rankTypes} onClose={()=>{setEditSoldier(null);onRefresh()}}/>}
@@ -458,7 +464,7 @@ function SoldierProfile({soldier,onClose,onDistinguish,onRemoveDistinction,user}
       </tbody></table>
       {s.distinction_citation&&<div className="d-flex justify-content-between py-1 border-bottom border-military"><span className="small text-muted-military">سبب التمييز</span><span className="small text-gold-bright">{s.distinction_citation}</span></div>}
       {s.distinguished_by_name&&<div className="d-flex justify-content-between py-1"><span className="small text-muted-military">مميز بواسطة</span><span className="small">{s.distinguished_by_name}</span></div>}
-      {user?.role==='commander'&&<div className="d-flex gap-2 mt-3">{s.distinction_badge?<button onClick={()=>onRemoveDistinction(s.id)} className="btn btn-danger-military btn-sm flex-grow-1">إزالة التمييز</button>:<button onClick={()=>onDistinguish(s)} className="btn btn-gold btn-sm flex-grow-1">🎖️ منح وسام</button>}</div>}
+      { (user?.role==='commander' || (user?.rankOrder!=null && soldier?.rank_order!=null && user.rankOrder>soldier.rank_order)) &&<div className="d-flex gap-2 mt-3">{s.distinction_badge?<button onClick={()=>onRemoveDistinction(s.id)} className="btn btn-danger-military btn-sm flex-grow-1">إزالة التمييز</button>:<button onClick={()=>onDistinguish(s)} className="btn btn-gold btn-sm flex-grow-1">🎖️ منح وسام</button>}</div>}
     </div>
   </Modal>);
 }

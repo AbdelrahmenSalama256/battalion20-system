@@ -164,17 +164,19 @@ sl.delete('/:id',auth,commanderOnly,async(req,res)=>{
     res.json({message:'تم الحذف'});
   }catch(e){res.status(500).json({error:e.message})}
 });
-sl.post('/:id/distinguish',auth,commanderOnly,async(req,res)=>{
+sl.post('/:id/distinguish',auth,async(req,res)=>{
   try{
     const{badge,citation}=req.body;
-    if(!badge||!['gold','silver','bronze'].includes(badge)) return res.status(400).json({error:'نوع الوسام غير صحيح'});
+    if(!badge) return res.status(400).json({error:'يرجى اختيار نوع الوسام'});
+    if(!await canEvaluate(req.user.id,req.params.id)) return res.status(403).json({error:'لا يمكنك تمييز هذا الفرد'});
     const{rows}=await db.query('UPDATE soldiers SET distinction_badge=$1,distinction_citation=$2,distinguished_by=$3,distinguished_at=NOW() WHERE id=$4 RETURNING *',[badge,citation||null,req.user.id,req.params.id]);
     if(!rows.length) return res.status(404).json({error:'غير موجود'});
     res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
 });
-sl.delete('/:id/distinguish',auth,commanderOnly,async(req,res)=>{
+sl.delete('/:id/distinguish',auth,async(req,res)=>{
   try{
+    if(!await canEvaluate(req.user.id,req.params.id)) return res.status(403).json({error:'لا يمكنك إزالة التمييز'});
     const{rows}=await db.query('UPDATE soldiers SET distinction_badge=NULL,distinction_citation=NULL,distinguished_by=NULL,distinguished_at=NULL WHERE id=$1 RETURNING *',[req.params.id]);
     res.json(rows[0]);
   }catch(e){res.status(500).json({error:e.message})}
