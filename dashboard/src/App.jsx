@@ -79,6 +79,7 @@ export default function App(){
   async function removeDistinction(soldierId){
     try{await api.removeDistinction(soldierId);load()}catch(e){alert(e.message)}
   }
+  const handleConfirmDistinguish=async(id,badge,citation)=>{try{await api.distinguishSoldier(id,badge,citation);setDistinguishModal(null);load()}catch(e){window.alert(e.message)}};
 
   const unread=data.notifications.filter(n=>!n.is_read).length;
 
@@ -200,11 +201,7 @@ export default function App(){
         </div>
       </div>
 
-      {selectedSoldier&&<SoldierProfile soldier={selectedSoldier} onClose={()=>setSelectedSoldier(null)}
-        onDistinguish={s=>{setSelectedSoldier(null);setDistinguishModal(s)}}
-        onRemoveDistinction={async id=>{try{await api.removeDistinction(id);setSelectedSoldier(null);load()}catch(e){alert(e.message)}}} user={u}/>}
-      {distinguishModal&&<DistinguishModal soldier={distinguishModal} onClose={()=>setDistinguishModal(null)}
-        onConfirm={async(id,badge,citation)=>{try{await api.distinguishSoldier(id,badge,citation);setDistinguishModal(null);load()}catch(e){alert(e.message)}}}/>}
+      {distinguishModal&&<DistinguishModal soldier={distinguishModal} onClose={()=>setDistinguishModal(null)} onConfirm={handleConfirmDistinguish}/>}
     </div>
   );
 }
@@ -453,21 +450,6 @@ function AnnouncementForm({onClose}){
   </Modal>);
 }
 
-function SoldierProfile({soldier,onClose,onDistinguish,onRemoveDistinction,user}){
-  const s=soldier;
-  return(<Modal onClose={onClose} width={500}>
-    <div className={`${s.distinction_badge?'gold-border':''} rounded p-3`}>
-      {s.distinction_badge&&<div className="badge-gold px-2 py-1 rounded mb-2 d-inline-block">⭐ {s.distinction_badge==='gold'?'🥇 ذهبي':s.distinction_badge==='silver'?'🥈 فضي':'🥉 برونزي'}</div>}
-      <div className="d-flex align-items-center gap-3 mb-3"><div className="fs-1">{s.weapon_icon||'👤'}</div><div><h5 className="mb-0">{s.name}</h5><div className="small text-gold">{s.rank_name||'غير محدد'}</div></div></div>
-      <table className="table table-borderless table-sm mb-0"><tbody>
-        {[{l:'الرقم العسكري',v:s.military_id},{l:'السلاح',v:s.weapon_name},{l:'التخصص العام',v:s.specialty_name},{l:'التخصص الدقيق',v:s.specific_specialty},{l:'ملاحظات',v:s.notes}].map(r=><tr key={r.l}><td className="text-muted-military small py-1">{r.l}</td><td className="small py-1">{r.v||'-'}</td></tr>)}
-      </tbody></table>
-      {s.distinction_citation&&<div className="d-flex justify-content-between py-1 border-bottom border-military"><span className="small text-muted-military">سبب التمييز</span><span className="small text-gold-bright">{s.distinction_citation}</span></div>}
-      {s.distinguished_by_name&&<div className="d-flex justify-content-between py-1"><span className="small text-muted-military">مميز بواسطة</span><span className="small">{s.distinguished_by_name}</span></div>}
-      { (user?.role==='commander' || (user?.rankOrder!=null && soldier?.rank_order!=null && user.rankOrder>soldier.rank_order)) &&<div className="d-flex gap-2 mt-3">{s.distinction_badge?<button onClick={()=>onRemoveDistinction(s.id)} className="btn btn-danger-military btn-sm flex-grow-1">إزالة التمييز</button>:<button onClick={()=>onDistinguish(s)} className="btn btn-gold btn-sm flex-grow-1">🎖️ منح وسام</button>}</div>}
-    </div>
-  </Modal>);
-}
 
 function DistinguishModal({soldier,onClose,onConfirm}){
   const[badge,setBadge]=useState('gold');const[citation,setCitation]=useState('');
