@@ -7,7 +7,11 @@ const router = express.Router();
 router.get('/', auth, commanderOnly, async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT id, name, username, role, is_active, created_at FROM users ORDER BY created_at'
+      `SELECT u.id, u.name, u.username, u.role, u.is_active, u.created_at,
+        u.rank_id, u.permissions, r.name rank_name, r.level rank_level
+       FROM users u
+       LEFT JOIN ranks r ON r.id = u.rank_id
+       ORDER BY u.created_at`
     );
     res.json(rows);
   } catch (e) {
@@ -17,18 +21,38 @@ router.get('/', auth, commanderOnly, async (req, res) => {
 
 router.post('/', auth, commanderOnly, async (req, res) => {
   try {
-    const { name, username, password, role } = req.body;
+    const { name, username, password, role, rankId, permissions } = req.body;
     if (!name || !username || !password) {
       return res.status(400).json({ error: 'يرجى إدخال جميع البيانات' });
     }
+
     const exists = await db.query('SELECT id FROM users WHERE username=$1', [username]);
     if (exists.rows.length) return res.status(400).json({ error: 'اسم المستخدم موجود بالفعل' });
+
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await db.query(
-      'INSERT INTO users (name, username, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING id, name, username, role, is_active, created_at',
-      [name, username, hash, role || 'officer']
+      `INSERT INTO users (name, username, password_hash, role, rank_id, permissions)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, username, role, is_active, created_at`,
+      [name, username, hash, role || 'officer', rankId || null, JSON.stringify(permissions || {})]
     );
     res.status(201).json(rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.patch('/:id', auth, commanderOnly, async (req, res) => {
+  try {
+    const { name, role, rankId, permissions } = req.body;
+    const { rows } = await db.query(
+      `UPDATE users SET name=$1, role=$2, rank_id=$3, permissions=$4
+       WHERE id=$5
+       RETURNING id, name, username, role, is_active, created_at, rank_id, permissions`,
+      [name, role || 'officer', rankId || null, JSON.stringify(permissions || {}), req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    res.json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

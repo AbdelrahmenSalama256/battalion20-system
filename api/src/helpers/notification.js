@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { emitToUser } = require('../socket');
+const { sendPushToUser } = require('./push');
 
 async function notifyUser(userId, title, message, type, data = {}) {
   try {
@@ -20,6 +21,8 @@ async function notifyUser(userId, title, message, type, data = {}) {
       ]
     );
     emitToUser(userId, 'notification', rows[0]);
+    // Send push notification (works even if dashboard is closed)
+    sendPushToUser(userId, title, message, `b20-${type}`);
     return rows[0];
   } catch (e) {
     console.error('notifyUser error:', e.message);
@@ -40,4 +43,17 @@ async function notifyAllCommanders(title, message, type, data = {}) {
   }
 }
 
-module.exports = { notifyUser, notifyAllCommanders };
+async function notifyAllUsers(title, message, type, data = {}) {
+  try {
+    const { rows } = await db.query(
+      'SELECT id FROM users WHERE is_active=true'
+    );
+    for (const u of rows) {
+      await notifyUser(u.id, title, message, type, data);
+    }
+  } catch (e) {
+    console.error('notifyAllUsers error:', e.message);
+  }
+}
+
+module.exports = { notifyUser, notifyAllCommanders, notifyAllUsers };

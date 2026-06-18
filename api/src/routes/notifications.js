@@ -11,10 +11,10 @@ router.get('/', auth, async (req, res) => {
         s.name evaluated_name,
         r2.name evaluated_rank
        FROM notifications n
-       LEFT JOIN users u ON u.id=n.evaluator_id
-       LEFT JOIN soldiers s ON s.id=n.evaluated_id
-       LEFT JOIN ranks r2 ON r2.id=s.rank_id
-       WHERE n.user_id=$1 OR n.user_id IS NULL
+       LEFT JOIN users u ON u.id = n.evaluator_id
+       LEFT JOIN soldiers s ON s.id = n.evaluated_id
+       LEFT JOIN ranks r2 ON r2.id = s.rank_id
+       WHERE n.user_id = $1 OR n.user_id IS NULL
        ORDER BY n.created_at DESC
        LIMIT 50`,
       [req.user.id]

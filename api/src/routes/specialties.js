@@ -5,16 +5,62 @@ const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    let query = `SELECT s.*, w.name as weapon_name, w.icon as weapon_icon
-                 FROM specialties s JOIN weapons w ON w.id=s.weapon_id`;
-    const params = [];
-    if (req.query.weaponId) {
-      query += ' WHERE s.weapon_id=$1';
-      params.push(req.query.weaponId);
-    }
-    query += ' ORDER BY s.name';
-    const { rows } = await db.query(query, params);
+    const { rows } = await db.query(
+      `SELECT s.*,
+        (SELECT COUNT(*) FROM soldier_specialties ss WHERE ss.specialty_id = s.id) as soldier_count
+       FROM specialties s
+       WHERE s.is_active = true
+       ORDER BY s.name`
+    );
     res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT s.*,
+        (SELECT COUNT(*) FROM soldier_specialties ss WHERE ss.specialty_id = s.id) as soldier_count
+       FROM specialties s WHERE s.id = $1`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'التخصص غير موجود' });
+
+    // Get soldiers in this specialty with their evaluations
+    const soldiers = await db.query(
+      `SELECT s.*, r.name rank_name, r.level rank_level,
+        ss.assigned_at,
+        (SELECT ROUND(AVG(e.score), 1) FROM evaluations e
+         WHERE e.soldier_id = s.id AND e.specialty_id = $1) as avg_score,
+        (SELECT COUNT(*) FROM evaluations e
+         WHERE e.soldier_id = s.id AND e.specialty_id = $1) as eval_count
+       FROM soldiers s
+       JOIN soldier_specialties ss ON ss.soldier_id = s.id
+       LEFT JOIN ranks r ON r.id = s.rank_id
+       WHERE ss.specialty_id = $1
+       ORDER BY r.level DESC, s.name`,
+      [req.params.id]
+    );
+
+    // Get overall stats
+    const stats = await db.query(
+      `SELECT
+        ROUND(AVG(e.score), 1) as avg_score,
+        COUNT(DISTINCT ss.soldier_id) as total_soldiers,
+        COUNT(e.id) as total_evals
+       FROM soldier_specialties ss
+       LEFT JOIN evaluations e ON e.soldier_id = ss.soldier_id AND e.specialty_id = $1
+       WHERE ss.specialty_id = $1`,
+      [req.params.id]
+    );
+
+    res.json({
+      ...rows[0],
+      soldiers: soldiers.rows,
+      stats: stats.rows[0]
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -22,11 +68,12 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/', auth, commanderOnly, async (req, res) => {
   try {
-    const { weaponId, name } = req.body;
-    if (!weaponId || !name) return res.status(400).json({ error: 'يرجى إدخال البيانات المطلوبة' });
+    const { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: 'يرجى إدخال اسم التخصص' });
+
     const { rows } = await db.query(
-      'INSERT INTO specialties (weapon_id, name) VALUES ($1, $2) RETURNING *',
-      [weaponId, name]
+      'INSERT INTO specialties (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -36,12 +83,12 @@ router.post('/', auth, commanderOnly, async (req, res) => {
 
 router.put('/:id', auth, commanderOnly, async (req, res) => {
   try {
-    const { weaponId, name } = req.body;
+    const { name, description, is_active } = req.body;
     const { rows } = await db.query(
-      'UPDATE specialties SET weapon_id=$1, name=$2 WHERE id=$3 RETURNING *',
-      [weaponId, name, req.params.id]
+      'UPDATE specialties SET name=$1, description=$2, is_active=$3 WHERE id=$4 RETURNING *',
+      [name, description || null, is_active !== false, req.params.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'غير موجود' });
+    if (!rows.length) return res.status(404).json({ error: 'التخصص غير موجود' });
     res.json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -50,8 +97,7 @@ router.put('/:id', auth, commanderOnly, async (req, res) => {
 
 router.delete('/:id', auth, commanderOnly, async (req, res) => {
   try {
-    const { rowCount } = await db.query('DELETE FROM specialties WHERE id=$1', [req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'غير موجود' });
+    await db.query('UPDATE specialties SET is_active = false WHERE id = $1', [req.params.id]);
     res.json({ message: 'تم الحذف بنجاح' });
   } catch (e) {
     res.status(500).json({ error: e.message });

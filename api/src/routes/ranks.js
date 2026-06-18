@@ -4,6 +4,17 @@ const { auth, commanderOnly } = require('../middleware/auth');
 const { notifyAllCommanders } = require('../helpers/notification');
 const router = express.Router();
 
+router.get('/types', auth, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT rt.*, COUNT(r.id) as rank_count FROM rank_types rt LEFT JOIN ranks r ON r.type_id=rt.id GROUP BY rt.id ORDER BY rt.created_at'
+    );
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/', auth, async (req, res) => {
   try {
     let query = `SELECT r.*, rt.name as type_name, rt.color as type_color

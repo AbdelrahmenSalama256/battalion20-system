@@ -22,7 +22,7 @@ body { background: var(--military-bg); color: var(--military-text); font-family:
 /* Smooth all interactive transitions */
 a, .btn, .nav-link, .sidebar-btn, .dropdown-item, .list-group-item, .soldier-card, .stat-card, .notif-item, .result-row,
 .bell-btn, .bell-badge, .card, .btn-close, .modal-content, .offcanvas, .form-control, .form-select,
-.table-hover tbody tr, .badge, .distinction-star, .gold-border, .score-badge, .notif-scores span,
+.table-hover tbody tr, .badge, .distinction-star, .gold-border, .score-badge,
 .nav-tabs .nav-link { transition: all .2s ease; }
 
 /* Prevent black text on hover in dark theme */
@@ -72,22 +72,28 @@ a:hover, a:focus, .btn:hover, .btn:focus, .nav-link:hover, .nav-link:focus,
 .soldier-card:hover { border-color: var(--military-gold) !important; transform: translateY(-2px); }
 .stat-card { transition: transform 0.2s; cursor: default; }
 .stat-card:hover { transform: translateY(-2px); }
-.notif-item { cursor: pointer; transition: background 0.15s; }
-.notif-item:hover { background: rgba(255,255,255,0.03); }
-.notif-item.unread { border-right: 3px solid var(--military-gold-bright); }
-.bell-btn { position: relative; background: none; border: none; color: var(--military-gold); font-size: 1.3rem; cursor: pointer; transition: transform .2s ease, color .2s ease; }
-.bell-btn:hover { color: var(--military-gold-bright); transform: scale(1.1); }
-.bell-badge { position: absolute; top: -4px; right: -4px; background: var(--military-danger); color: white; font-size: 0.55rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; transition: transform .2s ease; }
-.bell-btn:hover .bell-badge { transform: scale(1.15); }
 .nav-tabs { border-bottom-color: var(--military-border); }
 .nav-tabs .nav-link { color: var(--military-text2); transition: all .2s ease; border: none; border-bottom: 2px solid transparent; }
 .nav-tabs .nav-link.active { background: transparent !important; border: none !important; color: var(--military-gold) !important; border-bottom: 2px solid var(--military-gold) !important; }
 .nav-tabs .nav-link:hover { border: none; color: var(--military-gold-bright) !important; border-bottom: 2px solid var(--military-gold-bright); }
-.notif-scores { display: flex; gap: 4px; flex-wrap: wrap; }
-.notif-scores span { font-size: 0.7rem; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px; color: var(--military-text2); }
-.notif-person { font-size: 0.75rem; color: var(--military-gold); }
-.notif-time { font-size: 0.65rem; opacity: 0.6; }
 .score-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.border-gold-glow { border-color: #FFD700 !important; box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+.bg-gold { background: #FFD700 !important; color: #1a1a1a !important; }
+
+/* Bell animation */
+.bell-btn { position: relative; background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: transform 0.15s; }
+.bell-btn:hover { transform: scale(1.1); }
+.bell-badge { position: absolute; top: -2px; right: 0; background: #E53935; color: #fff; font-size: 0.55rem; font-weight: 700; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 0 3px; box-shadow: 0 0 6px rgba(229,57,53,0.6); animation: bellPop 0.3s ease; }
+.bell-glow { position: absolute; top: -4px; right: -2px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,215,0,0.3); animation: bellGlow 1.5s ease-in-out infinite; pointer-events: none; }
+@keyframes bellPop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes bellGlow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.3); } }
+
+/* Notification item */
+.notif-item { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.notif-item:hover { background: rgba(255,255,255,0.04); }
+.notif-item.unread { border-color: rgba(255,215,0,0.3) !important; background: rgba(255,215,0,0.03); }
+.notif-person { font-size: 0.65rem; font-weight: 600; color: var(--military-gold-bright); margin-top: 2px; }
+.notif-time { font-size: 0.55rem; color: var(--military-text-muted); margin-top: 1px; }
 .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--military-border); border-top-color: var(--military-gold); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 12px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .result-row { cursor: pointer; transition: background 0.15s; }
