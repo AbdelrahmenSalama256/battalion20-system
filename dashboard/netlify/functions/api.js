@@ -478,6 +478,7 @@ sl.post("/:id/evaluate", auth, async (req, res) => {
             total,
           ],
         );
+        await pushAllUsers(`تقييم جديد: ${sr.sname}`, msg);
       }
     }
     res.status(201).json(result.rows[0]);
@@ -839,6 +840,7 @@ rs.post("/", auth, async (req, res) => {
             total,
           ],
         );
+        await pushAllUsers(`تقييم`, msg);
       }
     }
     res.status(201).json(result.rows[0]);
@@ -986,6 +988,7 @@ ft.post("/results", auth, async (req, res) => {
               avg,
             ],
           );
+          await pushAllUsers(`تقييم لياقة`, `${req.user.name} قام بتقييم لياقة ${sr.sname}`);
         }
       }
       res.status(201).json({ message: "تم الحفظ", totalScore: avg });
@@ -1022,12 +1025,8 @@ an.post("/", auth, async (req, res) => {
       [title, body || null, priority || "normal", req.user.id],
     );
     // Notify commander
-    if (req.user.role !== "commander") {
-      await db.query(
-        "INSERT INTO notifications(type,message,evaluator_id,evaluator_name,evaluated_name)VALUES('announcement',$1,$2,$3,'')",
-        [`إعلان جديد: ${title}`, req.user.id, req.user.name],
-      );
-    }
+    await db.query("INSERT INTO notifications(type,message,evaluator_name)VALUES('announcement',$1,$2)", [`إعلان جديد: ${title}`, req.user.name]);
+    await pushAllUsers(`إعلان جديد: ${title}`, body || title);
     res.status(201).json(rows[0]);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1047,6 +1046,27 @@ an.delete("/:id", auth, commanderOnly, async (req, res) => {
 });
 app.use("/api/announcements", an);
 
+// PUSH HELPERS
+const webpush = require("web-push");
+const vapidPublic = process.env.VAPID_PUBLIC_KEY || "BKTs62IfCdNH1Mpshq_JN3jV5A4Uy9s9rkGyYEWpS_JrxBCw77OvGbRgmaimlb9-PP4sv1j7ftw-JHVozz-0jm4";
+const vapidPrivate = process.env.VAPID_PRIVATE_KEY || "dvU5B9e73mP2w4yGKEIImz2WU89D_Js0d5uGNG5xfck";
+webpush.setVapidDetails("mailto:admin@battalion20.com", vapidPublic, vapidPrivate);
+async function sendPushToUser(userId, title, body) {
+  try {
+    const { rows } = await pool.query("SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=$1", [userId]);
+    for (const sub of rows) {
+      try {
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify({ title, body }));
+      } catch (e) { if (e.statusCode === 410) await pool.query("DELETE FROM push_subscriptions WHERE endpoint=$1", [sub.endpoint]); }
+    }
+  } catch (e) { console.error("sendPushToUser error:", e.message); }
+}
+async function pushAllUsers(title, body) {
+  try {
+    const { rows: users } = await pool.query("SELECT id FROM users WHERE is_active=TRUE");
+    for (const u of users) { await sendPushToUser(u.id, title, body); }
+  } catch (e) { console.error("pushAllUsers error:", e.message); }
+}
 // PUSH SUBSCRIPTIONS
 const ps = express.Router();
 ps.post("/subscribe", auth, async (req, res) => {
