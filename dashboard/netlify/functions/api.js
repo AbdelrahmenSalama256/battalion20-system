@@ -62,6 +62,24 @@ async function runMigrations() {
   await pool.query(
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT",
   );
+  // 006: Push subscriptions
+  await pool.query(
+    "CREATE TABLE IF NOT EXISTS push_subscriptions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, user_agent TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())",
+  );
+  try {
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id)");
+  } catch (e) {}
+  // 007: Leaves & Personnel
+  await pool.query(
+    "CREATE TABLE IF NOT EXISTS leaves (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), soldier_id UUID REFERENCES soldiers(id) ON DELETE CASCADE, start_date DATE NOT NULL, end_date DATE NOT NULL, leave_type VARCHAR(50) DEFAULT 'regular', notes TEXT, status VARCHAR(20) DEFAULT 'active', confirmed_by UUID REFERENCES users(id), confirmed_at TIMESTAMPTZ DEFAULT NOW(), return_confirmed BOOLEAN DEFAULT FALSE, return_confirmed_by UUID REFERENCES users(id), return_confirmed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())",
+  );
+  try {
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_leaves_soldier_id ON leaves(soldier_id)");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_leaves_status ON leaves(status)");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_leaves_end_date ON leaves(end_date)");
+  } catch (e) {}
+  await pool.query("ALTER TABLE soldiers ADD COLUMN IF NOT EXISTS last_leave_end DATE");
+  await pool.query("ALTER TABLE soldiers ADD COLUMN IF NOT EXISTS enlistment_date DATE");
   console.log("Migrations done");
 }
 
@@ -1028,6 +1046,91 @@ an.delete("/:id", auth, commanderOnly, async (req, res) => {
   }
 });
 app.use("/api/announcements", an);
+
+// PUSH SUBSCRIPTIONS
+const ps = express.Router();
+ps.post("/subscribe", auth, async (req, res) => {
+  try {
+    const { endpoint, keys } = req.body;
+    if (!endpoint || !keys?.p256dh || !keys?.auth) return res.status(400).json({ error: "Missing data" });
+    await pool.query("DELETE FROM push_subscriptions WHERE endpoint=$1", [endpoint]);
+    await pool.query("INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth)VALUES($1,$2,$3,$4)", [req.user.id, endpoint, keys.p256dh, keys.auth]);
+    res.json({ message: "ok" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+ps.post("/unsubscribe", auth, async (req, res) => {
+  try {
+    if (req.body.endpoint) await pool.query("DELETE FROM push_subscriptions WHERE endpoint=$1", [req.body.endpoint]);
+    res.json({ message: "ok" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.use("/api/push", ps);
+
+// LEAVES
+const lv = express.Router();
+lv.get("/dashboard", auth, async (req, res) => {
+  try {
+    const total = await pool.query("SELECT COUNT(*) FROM soldiers WHERE is_active=TRUE");
+    const onLeave = await pool.query("SELECT COUNT(*) FROM soldiers WHERE status='إجازة' AND is_active=TRUE");
+    const needingLeave = await pool.query("SELECT COUNT(*) FROM soldiers s WHERE s.is_active=TRUE AND (s.status IS DISTINCT FROM 'إجازة') AND CURRENT_DATE-COALESCE((SELECT MAX(l.end_date) FROM leaves l WHERE l.soldier_id=s.id AND l.status='active'),s.last_leave_end,s.enlistment_date,s.created_at::date)>21");
+    const returningToday = await pool.query("SELECT COUNT(*) FROM leaves l JOIN soldiers s ON l.soldier_id=s.id WHERE l.status='active' AND l.end_date=CURRENT_DATE AND l.return_confirmed=FALSE");
+    const statusDist = await pool.query("SELECT status,COUNT(*)::int as count FROM soldiers WHERE is_active=TRUE GROUP BY status");
+    const monthlyStats = await pool.query("SELECT TO_CHAR(start_date,'YYYY-MM') as month,COUNT(*) as leaves_count FROM leaves WHERE start_date>=CURRENT_DATE-INTERVAL'12 months' GROUP BY TO_CHAR(start_date,'YYYY-MM') ORDER BY month");
+    const upcomingReturns = await pool.query("SELECT l.*,s.name soldier_name,s.military_number,(l.end_date-CURRENT_DATE) as days_remaining FROM leaves l JOIN soldiers s ON l.soldier_id=s.id WHERE l.status='active' AND l.return_confirmed=FALSE AND l.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE+7 ORDER BY l.end_date ASC");
+    res.json({
+      total: parseInt(total.rows[0].count), onLeave: parseInt(onLeave.rows[0].count),
+      needingLeave: parseInt(needingLeave.rows[0].count), returningToday: parseInt(returningToday.rows[0].count),
+      statusDistribution: statusDist.rows, monthlyStats: monthlyStats.rows, upcomingReturns: upcomingReturns.rows,
+      activeLeaves: 0, overdueReturn: 0,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.get("/active", auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT l.*,s.name soldier_name,s.military_number,(l.end_date-CURRENT_DATE) as remaining_days FROM leaves l JOIN soldiers s ON l.soldier_id=s.id WHERE l.status='active' ORDER BY l.end_date ASC");
+    res.json({ leaves: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.get("/overdue-return", auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT l.*,s.name soldier_name,s.military_number,(CURRENT_DATE-l.end_date) as overdue_days FROM leaves l JOIN soldiers s ON l.soldier_id=s.id WHERE l.status='active' AND l.end_date<CURRENT_DATE AND l.return_confirmed=FALSE ORDER BY l.end_date ASC");
+    res.json({ leaves: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.get("/needing-leave", auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT s.id,s.name,s.military_number,s.status as soldier_status,r.name as rank_name,COALESCE((SELECT MAX(l.end_date) FROM leaves l WHERE l.soldier_id=s.id AND l.status='active'),s.last_leave_end,s.enlistment_date,s.created_at::date) as last_leave,CURRENT_DATE-COALESCE((SELECT MAX(l.end_date) FROM leaves l WHERE l.soldier_id=s.id AND l.status='active'),s.last_leave_end,s.enlistment_date,s.created_at::date) as days_since_leave FROM soldiers s LEFT JOIN ranks r ON s.rank_id=r.id WHERE s.is_active=TRUE AND (s.status IS DISTINCT FROM 'إجازة') HAVING CURRENT_DATE-COALESCE((SELECT MAX(l.end_date) FROM leaves l WHERE l.soldier_id=s.id AND l.status='active'),s.last_leave_end,s.enlistment_date,s.created_at::date)>21 ORDER BY days_since_leave DESC");
+    res.json({ soldiers: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.post("/", auth, async (req, res) => {
+  try {
+    const { soldier_id, start_date, end_date, notes } = req.body;
+    if (!soldier_id || !start_date || !end_date) return res.status(400).json({ error: "missing fields" });
+    const { rows } = await pool.query("INSERT INTO leaves(soldier_id,start_date,end_date,notes,confirmed_by)VALUES($1,$2,$3,$4,$5)RETURNING *", [soldier_id, start_date, end_date, notes||null, req.user.id]);
+    await pool.query("UPDATE soldiers SET status='إجازة',last_leave_end=$1 WHERE id=$2", [end_date, soldier_id]);
+    res.status(201).json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.patch("/:id/confirm-return", auth, async (req, res) => {
+  try {
+    const leave = await pool.query("SELECT * FROM leaves WHERE id=$1", [req.params.id]);
+    if (!leave.rows.length) return res.status(404).json({ error: "غير موجود" });
+    const { rows } = await pool.query("UPDATE leaves SET return_confirmed=TRUE,return_confirmed_by=$1,return_confirmed_at=NOW(),status='completed' WHERE id=$2 RETURNING *", [req.user.id, req.params.id]);
+    await pool.query("UPDATE soldiers SET status='نشط' WHERE id=$1", [leave.rows[0].soldier_id]);
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+lv.patch("/:id/cancel", auth, async (req, res) => {
+  try {
+    const leave = await pool.query("SELECT * FROM leaves WHERE id=$1", [req.params.id]);
+    if (!leave.rows.length) return res.status(404).json({ error: "غير موجود" });
+    const { rows } = await pool.query("UPDATE leaves SET status='cancelled' WHERE id=$1 RETURNING *", [req.params.id]);
+    await pool.query("UPDATE soldiers SET status='نشط' WHERE id=$1 AND status='إجازة'", [leave.rows[0].soldier_id]);
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.use("/api/leaves", lv);
 
 // NOTIFICATIONS
 const nt = express.Router();
